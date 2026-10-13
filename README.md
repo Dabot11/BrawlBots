@@ -30,7 +30,23 @@ npm run build
 npm run preview
 ```
 
-La carpeta exacta que debes publicar es **`dist/`**, con todo su contenido. `npm run preview` permite comprobar localmente la compilación, pero no es un servidor de producción. Vite usa rutas relativas (`base: './'`), por lo que también puedes alojar `dist/` en una subcarpeta. Sirve los archivos mediante HTTP/HTTPS; no abras `index.html` con `file://`. Los sonidos y modelos no necesitan rutas externas. No se ha publicado en ningún servicio externo.
+La carpeta exacta que debes publicar es **`dist/`**, con todo su contenido. `npm run preview` permite comprobar localmente la compilación, pero no es un servidor de producción. Vite usa rutas relativas (`base: './'`), por lo que también puedes alojar `dist/` en una subcarpeta. Sirve los archivos mediante HTTP/HTTPS; no abras `index.html` con `file://`. Los sonidos y modelos no necesitan rutas externas.
+
+## Publicar y actualizar la web
+
+El destino de publicación es GitHub Pages. La rama `main` contiene el código y `gh-pages` contiene la versión compilada para la web.
+
+La activación se hace una sola vez en **Settings → Pages** de este repositorio: **Source: Deploy from a branch**, **Branch: gh-pages**, carpeta **/ (root)** y **Save**. Después, cada actualización de `gh-pages` inicia la publicación de GitHub. Hacer público el repositorio permite usar Pages en el plan gratuito, pero no concede al acceso de Codex los permisos administrativos para activar el sitio.
+
+Para actualizar el juego, Codex puede guardar y subir los cambios directamente a `main` y ejecutar:
+
+```sh
+npm run deploy
+```
+
+Este comando comprueba que el checkout esté limpio y coincida con `main` de GitHub, ejecuta las pruebas y la compilación, y sube solo los archivos de producción a `gh-pages`. Conserva el historial, rechaza sobrescrituras de publicaciones concurrentes y utiliza un índice Git temporal sin alterar el índice de `main`. Si la compilación ya está publicada, no crea otro commit. No necesita dependencias ni secretos adicionales a los que Git utiliza para escribir en el repositorio.
+
+Este es el flujo autorizado por el propietario para las siguientes entregas de Brawl Bots: Codex realiza el commit, sube a `main` y publica la compilación. Un pull request se usa si lo solicita el propietario o lo requieren las reglas del repositorio. Guardar o publicar el entorno de Codex conserva el espacio de trabajo; la web se actualiza mediante este comando y GitHub Pages.
 
 ## Controles
 
