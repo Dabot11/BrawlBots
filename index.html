@@ -13,8 +13,8 @@
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='5' y='8' width='22' height='20' rx='5' fill='%237fe3c5'/%3E%3Cpath d='M12 3h8v12h-8z' fill='%23152321'/%3E%3Ccircle cx='11' cy='21' r='3' fill='%23152321'/%3E%3Ccircle cx='21' cy='21' r='3' fill='%23152321'/%3E%3C/svg%3E"
     />
-    <script type="module" crossorigin src="./assets/index-DC0DwyPI.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DyU4Y8b9.css">
+    <script type="module" crossorigin src="./assets/index-9MnWsML6.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DZRWNd7s.css">
   </head>
   <body>
     <main id="app">
@@ -31,6 +31,15 @@
         >
         <div class="top-actions">
           <span id="device-status" class="device-status">TECLADO LISTO</span>
+          <button
+            id="rear-view"
+            class="view-button"
+            aria-label="Cambiar vista hacia atrás"
+            aria-pressed="false"
+            hidden
+          >
+            Ver atrás
+          </button>
           <button
             id="sound"
             class="icon-button"
@@ -69,6 +78,12 @@
           <div class="health-track"><div id="enemy-fill"></div></div>
         </div>
       </section>
+      <div id="weapon-status" class="weapon-status" hidden>
+        <span id="weapon-state"></span>
+        <div class="health-track"><div id="weapon-ready"></div></div>
+        <small id="enemy-direction"></small>
+      </div>
+      <div id="view-mode" class="view-mode" hidden>VISTA HACIA ATRÁS</div>
       <div id="notice" class="notice" role="status" aria-live="polite"></div>
       <div id="countdown" class="countdown" hidden aria-live="polite"></div>
       <section id="menu" class="menu" aria-label="Menú principal">
@@ -81,11 +96,26 @@
           </h1>
           <p class="tagline">Arma tu robot. Domina la arena.</p>
           <p class="intro">
-            Metal, ruedas y un cañón. Entra al patio,<br
-              class="desktop-break"
-            />
-            encuentra tu ruta y deja que salten las chispas.
+            Picos, golpes y metal. Entra al patio,<br class="desktop-break" />
+            acércate al rival y deja que salten las chispas.
           </p>
+          <div
+            id="weapon-picker"
+            class="weapon-picker"
+            aria-label="Elegir arma cuerpo a cuerpo"
+          >
+            <div class="weapon-selector">
+              <button id="weapon-prev" aria-label="Arma anterior">←</button>
+              <div>
+                <span class="eyebrow"
+                  >ARMA CUERPO A CUERPO <span id="weapon-count"></span></span
+                ><strong id="weapon-name">Martillo</strong>
+              </div>
+              <button id="weapon-next" aria-label="Arma siguiente">→</button>
+            </div>
+            <p id="weapon-description"></p>
+            <span id="weapon-hint" class="weapon-hint"></span>
+          </div>
           <div id="menu-buttons" class="menu-buttons"></div>
           <p id="menu-confirm" class="menu-confirm">
             ENTER PARA ENTRAR A LA ARENA
@@ -116,8 +146,9 @@
       </section>
       <footer id="controls" class="controls">
         <div class="control-group" id="drive-controls"></div>
-        <div class="control-group" id="fire-controls"></div>
+        <div class="control-group" id="attack-controls"></div>
         <div class="control-group" id="pause-controls"></div>
+        <div class="control-group" id="rear-controls"></div>
         <div class="control-note" id="controller-hint">
           ¿Tienes un mando? Pulsa un botón para conectarlo.
         </div>
