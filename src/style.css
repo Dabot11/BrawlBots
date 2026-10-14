@@ -764,3 +764,157 @@ kbd {
     display: none;
   }
 }
+
+.view-button {
+  border: 1px solid #e4eed645;
+  border-radius: 4px;
+  padding: 8px 12px;
+  background: #19342ce0;
+  color: #eef4d7;
+  font: 11px monospace;
+}
+.view-button[aria-pressed="true"] {
+  background: var(--mint);
+  color: var(--ink);
+}
+.weapon-picker {
+  width: 310px;
+  max-width: 100%;
+  border: 1px solid #bbd6b545;
+  background: #152e25b5;
+  border-radius: 5px;
+  padding: 12px 14px;
+  margin: 0 0 18px;
+}
+.weapon-selector {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 13px;
+}
+.weapon-selector button {
+  border: 1px solid #bbd6b550;
+  border-radius: 3px;
+  width: 29px;
+  height: 29px;
+  color: var(--mint);
+  background: #1b392d;
+}
+.weapon-selector .eyebrow {
+  font-size: 8px;
+  letter-spacing: 1px;
+}
+.weapon-selector strong {
+  display: block;
+  font-size: 17px;
+  margin-top: 4px;
+}
+#weapon-count {
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--mint);
+}
+.weapon-picker p {
+  color: #cfdec7;
+  font-size: 11px;
+  line-height: 1.5;
+  margin: 9px 0 5px;
+  min-height: 32px;
+}
+.weapon-hint {
+  font: 8px monospace;
+  letter-spacing: 0.6px;
+  color: #b5c8a8;
+}
+.weapon-status {
+  position: absolute;
+  z-index: 4;
+  right: 3.6%;
+  bottom: 107px;
+  background: #152c26ed;
+  border: 1px solid #d1e6bc36;
+  border-radius: 5px;
+  padding: 13px 16px;
+  width: 230px;
+  font: 10px monospace;
+  letter-spacing: 0.5px;
+}
+#weapon-ready {
+  height: 100%;
+  background: var(--mint);
+}
+.weapon-status small {
+  display: block;
+  margin-top: 9px;
+  color: #bcd1b1;
+  font-size: 10px;
+  letter-spacing: 0;
+}
+.view-mode {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  bottom: 109px;
+  transform: translateX(-50%);
+  color: var(--mint);
+  background: #152c26ed;
+  padding: 9px 15px;
+  border: 1px solid #a8d8a957;
+  border-radius: 3px;
+  font: 10px monospace;
+  letter-spacing: 1px;
+}
+@media (max-height: 750px) {
+  .home h1 {
+    font-size: 76px;
+    margin: 16px 0;
+  }
+  .home .intro {
+    margin-bottom: 12px;
+  }
+  .home .menu-copy {
+    top: 50%;
+    transform: translateY(-48%);
+  }
+  .weapon-picker {
+    padding: 9px 12px;
+    margin-bottom: 13px;
+  }
+  .weapon-picker p {
+    margin: 5px 0;
+  }
+}
+@media (max-width: 900px) {
+  .controls {
+    gap: 18px;
+  }
+  .controls .control-note {
+    display: none;
+  }
+  .weapon-status {
+    bottom: 100px;
+  }
+  .device-status {
+    display: none;
+  }
+}
+@media (max-width: 620px) {
+  .home .menu-copy {
+    top: 45%;
+  }
+  .home h1 {
+    font-size: 70px;
+    margin: 18px 0;
+  }
+  .arena-tag {
+    display: none;
+  }
+  .weapon-status {
+    bottom: 113px;
+    width: 210px;
+  }
+  .view-button {
+    font-size: 9px;
+    padding: 6px;
+  }
+}

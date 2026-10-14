@@ -1,5 +1,5 @@
 import "./style.css";
-import { CONFIG } from "./config.js";
+import { CONFIG, WEAPON_IDS } from "./config.js";
 import { Simulation } from "./simulation.js";
 import { Input } from "./input.js";
 import { Renderer } from "./render.js";
@@ -11,18 +11,37 @@ const sim = new Simulation(),
 let renderer,
   input,
   accumulator = 0;
+let rearToggled = false;
 const ui = new UI(action);
 
 function start() {
   sim.reset();
+  rearToggled = false;
   renderer?.clearEffects();
+  renderer?.resetView(sim.robots[0]);
   input?.clear();
   accumulator = 0;
   sound.unlock();
   document.getElementById("viewport").focus({ preventScroll: true });
-  ui.notify("Patio de Chatarra · Usa la cobertura y protege tus piezas.", 3);
+  ui.notify("Patio de Chatarra · Acércate, golpea y protege tus flancos.", 3);
 }
 function action(name) {
+  if (name === "previous-weapon" || name === "next-weapon") {
+    if (sim.state === "home") {
+      const delta = name === "next-weapon" ? 1 : -1;
+      const index =
+        (WEAPON_IDS.indexOf(sim.playerWeapon) + delta + WEAPON_IDS.length) %
+        WEAPON_IDS.length;
+      sim.selectWeapon(WEAPON_IDS[index]);
+      ui.loadout(sim);
+    }
+    return;
+  }
+  if (name === "rear") {
+    if (["playing", "countdown"].includes(sim.state))
+      rearToggled = !rearToggled;
+    return;
+  }
   if (name === "sound") {
     sound.unlock();
     sound.muted = !sound.muted;
@@ -50,6 +69,7 @@ function action(name) {
     return;
   }
   if (name === "home") {
+    rearToggled = false;
     sim.home();
     renderer?.clearEffects();
     input?.clear();
@@ -62,6 +82,7 @@ function action(name) {
     return;
   }
   if (name === "pause") {
+    rearToggled = false;
     if (sim.state === "paused") action("resume");
     else {
       sim.pause();
@@ -85,6 +106,7 @@ input = new Input(action, (device, connected) =>
   ui.setDevice(device, connected),
 );
 function suspend() {
+  rearToggled = false;
   input.clear();
   input.enabled = false;
   sim.pause();
@@ -133,8 +155,14 @@ try {
     events.forEach((event) => sound.event(event));
     if (events.some((event) => event.type === "start"))
       ui.notify("¡A combatir!", 1.3);
+    if (events.some((event) => event.type === "flip" && event.target === 0))
+      ui.notify("¡Te han volcado! Recuperando estabilidad…", 1.4);
     ui.update(sim, dt);
-    renderer.update(sim, dt);
+    const rear =
+      ["playing", "countdown"].includes(sim.state) &&
+      (rearToggled || command.rear);
+    ui.rearView(rear);
+    renderer.update(sim, dt, rear);
     requestAnimationFrame(frame);
   }
   ui.update(sim, 0);

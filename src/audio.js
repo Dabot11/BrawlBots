@@ -40,7 +40,15 @@ export class Sound {
     };
   }
   event(event) {
-    if (event.type === "fire") this.tone(180, 0.08, "sawtooth", 0.025, 45);
+    if (event.type === "attack")
+      this.tone(
+        event.weapon === "saw" ? 110 : 220,
+        0.12,
+        "triangle",
+        0.025,
+        70,
+      );
+    if (event.type === "flip") this.tone(110, 0.22, "triangle", 0.05, 260);
     if (event.type === "impact") this.tone(320, 0.06, "triangle", 0.04, 60);
     if (event.type === "damage") this.tone(90, 0.14, "square", 0.035, 30);
     if (event.type === "destroy") this.tone(65, 0.45, "sawtooth", 0.09, 12);

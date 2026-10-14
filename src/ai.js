@@ -1,4 +1,4 @@
-import { CONFIG, angleDifference, heading, clamp } from "./config.js";
+import { CONFIG, WEAPONS, angleDifference, heading, clamp } from "./config.js";
 import { lineClear } from "./collision.js";
 
 export class RivalAI {
@@ -10,14 +10,18 @@ export class RivalAI {
     this.reaction = 0.6;
     this.repath = 0;
     this.path = [];
-    this.command = { throttle: 0, turn: 0, fire: false };
+    this.command = { throttle: 0, turn: 0, attack: false };
     this.stuckTime = 0;
     this.last = null;
     this.recovery = 0;
     this.recoveryCount = 0;
   }
-
   update(robot, target, dt) {
+    if (robot.stun > 0 || robot.flipTime > 0 || robot.hp <= 0) {
+      this.last = { x: robot.x, z: robot.z };
+      this.stuckTime = 0;
+      return (this.command = { throttle: 0, turn: 0, attack: false });
+    }
     this.reaction -= dt;
     this.repath -= dt;
     if (
@@ -36,17 +40,17 @@ export class RivalAI {
     }
     if (this.recovery > 0) {
       this.recovery -= dt;
-      this.command = {
+      return (this.command = {
         throttle: -0.85,
         turn: this.recoveryCount % 2 ? 0.7 : -0.7,
-        fire: false,
-      };
-      return this.command;
+        attack: false,
+      });
     }
     if (this.reaction > 0) return this.command;
     this.reaction = CONFIG.ai.reaction;
+    const weapon = WEAPONS[robot.weaponId];
     const distance = Math.hypot(robot.x - target.x, robot.z - target.z);
-    const clearShot = lineClear(robot, target, 0.15);
+    const visible = lineClear(robot, target, 0.08);
     const clearDrive = lineClear(robot, target, robot.radius + 0.2);
     if (this.repath <= 0) {
       this.path = this.navigation.findPath(robot, target);
@@ -57,25 +61,19 @@ export class RivalAI {
       Math.hypot(robot.x - this.path[0].x, robot.z - this.path[0].z) < 1.0
     )
       this.path.shift();
-    const attacking = clearShot && distance < CONFIG.ai.range;
-    const waypoint = attacking ? target : clearDrive ? target : this.path[0];
+    const inReach = visible && distance <= weapon.reach + target.radius;
+    const waypoint = inReach || clearDrive ? target : this.path[0];
     if (!waypoint)
-      return (this.command = { throttle: -0.4, turn: 0.7, fire: false });
+      return (this.command = { throttle: -0.4, turn: 0.7, attack: false });
     const difference = angleDifference(heading(robot, waypoint), robot.angle);
-    const turn = clamp(difference * 1.8, -0.8, 0.8);
-    let throttle = Math.abs(difference) < 1.1 ? 0.72 : 0;
-    if (attacking && distance < CONFIG.ai.preferredRange)
-      throttle = distance < 3.3 ? -0.45 : 0;
-    // Keep a little forward pressure while repositioning behind cover.
-    if (!attacking && Math.abs(difference) < 0.35) throttle = 0.8;
-    this.command = {
+    const turn = clamp(difference * 2.3, -0.85, 0.85);
+    let throttle = Math.abs(difference) < 1.0 ? CONFIG.ai.approachSpeed : 0;
+    if (visible && distance < robot.radius + target.radius + 0.18) throttle = 0;
+    if (inReach && Math.abs(difference) > weapon.arc) throttle = 0;
+    return (this.command = {
       throttle,
       turn,
-      fire:
-        attacking &&
-        Math.abs(angleDifference(heading(robot, target), robot.angle)) <
-          CONFIG.ai.aimAngle,
-    };
-    return this.command;
+      attack: inReach && Math.abs(difference) <= weapon.arc * 0.8,
+    });
   }
 }

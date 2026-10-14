@@ -2,20 +2,23 @@ import { createRobot, drive } from "./robots.js";
 import { Navigation } from "./navigation.js";
 import { RivalAI } from "./ai.js";
 import { separateRobots } from "./collision.js";
-import { fire, advanceProjectiles } from "./weapons.js";
+import { startAttack, updateAttack } from "./weapons.js";
+import { WEAPON_IDS } from "./config.js";
 
 export class Simulation {
   constructor() {
+    this.playerWeapon = "hammer";
     this.ai = new RivalAI(new Navigation());
     this.state = "home";
     this.reset();
     this.state = "home";
   }
   reset() {
-    this.robots = [createRobot(0), createRobot(1)];
-    this.bullets = [];
+    this.robots = [
+      createRobot(0, undefined, this.playerWeapon),
+      createRobot(1),
+    ];
     this.events = [];
-    this.nextBullet = 0;
     this.elapsed = 0;
     this.countdown = 3;
     this.winner = null;
@@ -26,6 +29,11 @@ export class Simulation {
   home() {
     this.reset();
     this.state = "home";
+  }
+  selectWeapon(id) {
+    if (this.state !== "home" || !WEAPON_IDS.includes(id)) return false;
+    this.playerWeapon = this.robots[0].weaponId = id;
+    return true;
   }
   pause() {
     if (this.state === "playing" || this.state === "countdown") {
@@ -58,21 +66,14 @@ export class Simulation {
       [player, playerInput],
       [rival, rivalInput],
     ]) {
-      robot.cooldown = Math.max(0, robot.cooldown - dt);
-      if (input.fire && fire(robot, this.bullets, this.events, this.nextBullet))
-        this.nextBullet++;
+      if (input.attack) startAttack(robot, this.events);
+      updateAttack(robot, this.robots, dt, this.events);
     }
-    this.bullets = advanceProjectiles(
-      this.bullets,
-      this.robots,
-      dt,
-      this.events,
-    );
     if (player.hp <= 0 || rival.hp <= 0) {
       this.winner = player.hp <= 0 ? 1 : 0;
       this.state = "result";
-      this.bullets = [];
       player.speedNow = rival.speedNow = 0;
+      player.attacking = rival.attacking = false;
       this.events.push({ type: "result", winner: this.winner });
     }
   }

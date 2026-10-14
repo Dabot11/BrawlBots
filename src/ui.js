@@ -1,3 +1,4 @@
+import { WEAPONS, WEAPON_IDS, heading, angleDifference } from "./config.js";
 const $ = (id) => document.getElementById(id);
 
 export class UI {
@@ -10,6 +11,9 @@ export class UI {
     this.help = true;
     this.noticeTimer = 0;
     $("pause").onclick = () => onAction("pause");
+    $("rear-view").onclick = () => onAction("rear");
+    $("weapon-prev").onclick = () => onAction("previous-weapon");
+    $("weapon-next").onclick = () => onAction("next-weapon");
     $("brand").onclick = (event) => {
       event.preventDefault();
       onAction("brand");
@@ -26,12 +30,18 @@ export class UI {
     $("drive-controls").innerHTML = pad
       ? "<kbd>LS</kbd><span>CONDUCIR</span>"
       : '<div class="key-cluster"><kbd>W</kbd><span><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span></div><span>CONDUCIR</span>';
-    $("fire-controls").innerHTML = pad
-      ? "<kbd>RT</kbd><span>DISPARAR</span>"
-      : '<kbd class="wide-key">ESPACIO</kbd><span>DISPARAR</span>';
+    $("attack-controls").innerHTML = pad
+      ? "<kbd>RT</kbd><span>ATACAR</span>"
+      : '<kbd class="wide-key">ESPACIO</kbd><span>ATACAR</span>';
     $("pause-controls").innerHTML = pad
       ? "<kbd>MENU</kbd><span>PAUSA</span>"
-      : "<kbd>ESC</kbd><span>PAUSA</span>";
+      : "<kbd>P / ESC</kbd><span>PAUSA</span>";
+    $("rear-controls").innerHTML = pad
+      ? "<kbd>RS</kbd><span>MIRAR ATRÁS</span>"
+      : "<kbd>C</kbd><span>MIRAR ATRÁS</span>";
+    $("weapon-hint").textContent = pad
+      ? "LB / RB o ← → PARA ELEGIR"
+      : "Q / E o ← → PARA ELEGIR";
     $("menu-confirm").textContent = pad
       ? "A PARA CONFIRMAR · STICK / CRUCETA PARA ELEGIR"
       : "ENTER PARA CONFIRMAR · ↑ ↓ PARA ELEGIR";
@@ -55,6 +65,22 @@ export class UI {
     $("notice").textContent = message;
     this.noticeTimer = seconds;
   }
+  loadout(sim) {
+    const weapon = WEAPONS[sim.playerWeapon];
+    $("weapon-name").textContent = weapon.name;
+    $("weapon-description").textContent = weapon.description;
+    $("weapon-count").textContent =
+      `${WEAPON_IDS.indexOf(sim.playerWeapon) + 1} / ${WEAPON_IDS.length}`;
+  }
+  rearView(rear) {
+    $("rear-view").setAttribute("aria-pressed", String(Boolean(rear)));
+    $("rear-view").setAttribute(
+      "aria-label",
+      rear ? "Volver a vista frontal" : "Mirar hacia atrás",
+    );
+    $("rear-view").textContent = rear ? "Vista frontal" : "Ver atrás";
+    $("view-mode").hidden = !rear;
+  }
   menuMove(delta) {
     if (!this.options.length) return;
     this.selected =
@@ -76,6 +102,8 @@ export class UI {
       paused = sim.state === "paused";
     const victory = sim.winner === 0;
     if (home) this.notify("", 0);
+    $("weapon-picker").hidden = !home;
+    this.loadout(sim);
     $("menu").classList.toggle("compact-menu", !home);
     $("menu").classList.toggle("victory-menu", !home && !paused && victory);
     $("app").classList.toggle("home", home);
@@ -105,7 +133,7 @@ export class UI {
           ? "Óxido ha quedado fuera de combate."
           : "Remache necesita unas reparaciones.";
     $("menu").querySelector(".intro").innerHTML = home
-      ? 'Metal, ruedas y un cañón. Entra al patio,<br class="desktop-break" /> encuentra tu ruta y deja que salten las chispas.'
+      ? 'Picos, golpes y metal. Entra al patio,<br class="desktop-break" /> acércate al rival y deja que salten las chispas.'
       : paused
         ? "Vuelve cuando estés listo. Cada pieza cuenta."
         : "Duración del duelo: " + this.time(sim.elapsed) + ". ¿Otra ronda?";
@@ -159,6 +187,8 @@ export class UI {
         $("app").classList.remove("home", "overlay");
       }
       $("hud").hidden = sim.state === "home";
+      $("rear-view").hidden = sim.state === "home";
+      $("weapon-status").hidden = sim.state === "home";
       $("countdown").hidden = sim.state !== "countdown";
     }
     if (sim.state === "countdown")
@@ -168,6 +198,23 @@ export class UI {
     $("enemy-health").textContent = sim.robots[1].hp;
     $("player-fill").style.width = `${sim.robots[0].hp}%`;
     $("enemy-fill").style.width = `${sim.robots[1].hp}%`;
+    const [player, rival] = sim.robots;
+    const weapon = WEAPONS[player.weaponId];
+    const readiness = Math.max(0, 1 - player.cooldown / weapon.interval);
+    $("weapon-ready").style.width = `${readiness * 100}%`;
+    $("weapon-state").textContent =
+      `${weapon.name} · ${player.flipTime > 0 ? "RECUPERANDO" : player.cooldown > 0 ? "PREPARANDO" : "LISTO"}`;
+    const difference = angleDifference(heading(player, rival), player.angle);
+    const direction =
+      Math.abs(difference) > 2.1
+        ? "detrás"
+        : Math.abs(difference) < 0.7
+          ? "al frente"
+          : difference < 0
+            ? "a la izquierda"
+            : "a la derecha";
+    $("enemy-direction").textContent =
+      `Óxido · ${direction} · ${Math.round(Math.hypot(rival.x - player.x, rival.z - player.z))} m`;
     $("match-status").textContent =
       sim.state === "countdown"
         ? "PREPARADOS"

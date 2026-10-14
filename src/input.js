@@ -24,6 +24,10 @@ export class Input {
       "ArrowRight",
       "Space",
       "Escape",
+      "KeyP",
+      "KeyC",
+      "KeyQ",
+      "KeyE",
       "Enter",
     ];
     window.addEventListener("keydown", (event) => {
@@ -32,7 +36,10 @@ export class Input {
       if (event.repeat || !this.enabled) return;
       this.use("keyboard");
       this.keys.add(event.code);
-      if (event.code === "Escape") onAction("pause");
+      if (event.code === "Escape" || event.code === "KeyP") onAction("pause");
+      if (["KeyQ", "ArrowLeft"].includes(event.code))
+        onAction("previous-weapon");
+      if (["KeyE", "ArrowRight"].includes(event.code)) onAction("next-weapon");
       if (event.code === "Enter") onAction("confirm");
       if (event.code === "ArrowUp" || event.code === "KeyW") onAction("up");
       if (event.code === "ArrowDown" || event.code === "KeyS") onAction("down");
@@ -90,10 +97,13 @@ export class Input {
       turn:
         Number(this.keys.has("KeyD") || this.keys.has("ArrowRight")) -
         Number(this.keys.has("KeyA") || this.keys.has("ArrowLeft")),
-      fire: this.keys.has("Space"),
+      attack: this.keys.has("Space"),
+      rear: this.keys.has("KeyC"),
     };
     if (!pad)
-      return this.enabled ? keyboard : { throttle: 0, turn: 0, fire: false };
+      return this.enabled
+        ? keyboard
+        : { throttle: 0, turn: 0, attack: false, rear: false };
     this.gamepadIndex = pad.index;
     if (!this.connected) {
       this.connected = true;
@@ -103,7 +113,7 @@ export class Input {
     const turn = this.axis(pad.axes[0]),
       throttle = -this.axis(pad.axes[1]);
     const trigger = pad.buttons[7]?.value || 0;
-    const fire = trigger > 0.2;
+    const attack = trigger > 0.2;
     // Switch on fresh input, so an idle connected controller cannot steal keyboard focus.
     const freshButton = buttons.some(
       (pressed, i) => pressed && !this.previousButtons[i],
@@ -112,7 +122,7 @@ export class Input {
       (Math.abs(turn) > 0.1 && Math.abs(turn - this.previousAxes[0]) > 0.08) ||
       (Math.abs(throttle) > 0.1 &&
         Math.abs(throttle - this.previousAxes[1]) > 0.08) ||
-      (fire && trigger - this.previousTrigger > 0.08);
+      (attack && trigger - this.previousTrigger > 0.08);
     if (this.enabled && (freshButton || freshAnalog)) this.use("gamepad");
     const direction =
       buttons[12] || pad.axes[1] < -0.55
@@ -123,6 +133,16 @@ export class Input {
     if (this.enabled) {
       if (buttons[9] && !this.previousButtons[9]) this.onAction("pause");
       if (buttons[0] && !this.previousButtons[0]) this.onAction("confirm");
+      if (
+        (buttons[4] && !this.previousButtons[4]) ||
+        (buttons[14] && !this.previousButtons[14])
+      )
+        this.onAction("previous-weapon");
+      if (
+        (buttons[5] && !this.previousButtons[5]) ||
+        (buttons[15] && !this.previousButtons[15])
+      )
+        this.onAction("next-weapon");
       if (direction && direction !== this.previousDirection)
         this.onAction(direction < 0 ? "up" : "down");
     }
@@ -130,7 +150,10 @@ export class Input {
     this.previousDirection = direction;
     this.previousAxes = [turn, throttle];
     this.previousTrigger = trigger;
-    if (!this.enabled) return { throttle: 0, turn: 0, fire: false };
-    return this.device === "gamepad" ? { throttle, turn, fire } : keyboard;
+    if (!this.enabled)
+      return { throttle: 0, turn: 0, attack: false, rear: false };
+    return this.device === "gamepad"
+      ? { throttle, turn, attack, rear: Boolean(buttons[11]) }
+      : keyboard;
   }
 }

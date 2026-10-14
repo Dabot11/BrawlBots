@@ -1,5 +1,7 @@
 import * as THREE from "three";
-import { CONFIG, OBSTACLES, clamp } from "./config.js";
+import { CONFIG, OBSTACLES, WEAPONS, WEAPON_IDS } from "./config.js";
+
+import { ChaseCamera } from "./camera.js";
 
 const COLORS = {
   mint: 0x62d5b7,
@@ -184,6 +186,147 @@ function createGround() {
   return texture;
 }
 
+function createMeleeWeapon(id, steel, black, paint) {
+  const group = new THREE.Group(),
+    pivot = new THREE.Group();
+  group.add(pivot);
+  let rotor = null;
+  box(group, black, [1.1, 0.18, 0.2], [0, 0.65, -0.9]);
+  if (id === "spike" || id === "forks") {
+    const positions = id === "spike" ? [0] : [-0.45, 0.45];
+    for (const x of positions) {
+      const tip = mesh(
+        new THREE.ConeGeometry(id === "spike" ? 0.22 : 0.17, 0.85, 5),
+        steel,
+        pivot,
+        x,
+        0.7,
+        -1.35,
+      );
+      tip.rotation.x = -Math.PI / 2;
+      box(pivot, paint, [0.3, 0.25, 0.35], [x, 0.7, -0.92]);
+    }
+  } else if (id === "hammer" || id === "mace") {
+    pivot.position.set(0, 1.05, -0.1);
+    box(pivot, steel, [0.14, 0.16, 1.25], [0, 0, -0.65]);
+    cylinder(group, black, 0.2, 0.42, [0, 1.05, -0.1]).rotation.z = Math.PI / 2;
+    if (id === "hammer") {
+      mesh(bevelGeometry(0.92, 0.46, 0.4), steel, pivot, 0, 0, -1.48);
+      box(pivot, paint, [0.42, 0.43, 0.5], [0, 0, -1.48]);
+      for (const x of [-0.35, 0.35])
+        box(pivot, black, [0.09, 0.42, 0.48], [x, 0, -1.48]);
+    } else {
+      mesh(new THREE.DodecahedronGeometry(0.38), steel, pivot, 0, 0, -1.35);
+      for (const vector of [
+        [1, 0, 0],
+        [-1, 0, 0],
+        [0, 1, 0],
+        [0, -1, 0],
+        [0, 0, -1],
+      ]) {
+        const direction = new THREE.Vector3(...vector);
+        const tip = mesh(
+          new THREE.ConeGeometry(0.11, 0.3, 4),
+          steel,
+          pivot,
+          direction.x * 0.42,
+          direction.y * 0.42,
+          -1.35 + direction.z * 0.42,
+        );
+        tip.quaternion.setFromUnitVectors(
+          new THREE.Vector3(0, 1, 0),
+          direction,
+        );
+      }
+    }
+  } else if (id === "saw") {
+    box(group, paint, [0.35, 0.28, 0.65], [0, 0.7, -1.12]);
+    rotor = new THREE.Group();
+    rotor.position.set(0, 0.83, -1.4);
+    pivot.add(rotor);
+    const disc = cylinder(rotor, steel, 0.54, 0.16, [0, 0, 0], 18);
+    disc.rotation.z = Math.PI / 2;
+    cylinder(rotor, black, 0.15, 0.2, [0, 0, 0], 8).rotation.z = Math.PI / 2;
+    for (let i = 0; i < 14; i++) {
+      const angle = (i / 14) * Math.PI * 2;
+      const direction = new THREE.Vector3(0, Math.cos(angle), Math.sin(angle));
+      const tooth = mesh(
+        new THREE.ConeGeometry(0.1, 0.2, 3),
+        steel,
+        rotor,
+        0,
+        direction.y * 0.59,
+        direction.z * 0.59,
+      );
+      tooth.quaternion.setFromUnitVectors(
+        new THREE.Vector3(0, 1, 0),
+        direction,
+      );
+    }
+  } else {
+    pivot.position.set(0, 0.7, -0.75);
+    const points = [
+      [-0.95, 0, 0],
+      [0.95, 0, 0],
+      [-0.95, -0.5, -1.02],
+      [0.95, -0.5, -1.02],
+      [-0.95, -0.18, 0],
+      [0.95, -0.18, 0],
+    ];
+    const triangles = [
+      0, 1, 2, 1, 3, 2, 0, 4, 1, 1, 4, 5, 0, 2, 4, 1, 5, 3, 4, 2, 5, 5, 2, 3,
+    ];
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute(
+        triangles.flatMap((index) => points[index]),
+        3,
+      ),
+    );
+    geometry.computeVertexNormals();
+    mesh(geometry, paint, pivot);
+    for (const x of [-0.65, 0, 0.65]) {
+      const rail = box(pivot, steel, [0.1, 0.07, 1.13], [x, -0.22, -0.5]);
+      rail.rotation.x = -0.46;
+    }
+    cylinder(group, black, 0.16, 1.1, [0, 0.7, -0.75]).rotation.z = Math.PI / 2;
+  }
+  return { group, pivot, rotor };
+}
+
+function animateMeleeWeapon(visual, robot, dt) {
+  for (const [id, model] of Object.entries(visual.weapons)) {
+    model.group.visible = id === robot.weaponId;
+    if (!model.group.visible) continue;
+    const weapon = WEAPONS[id];
+    const elapsed = robot.attacking ? robot.attackElapsed : 0;
+    const phase = robot.attacking ? Math.min(1, elapsed / weapon.duration) : 0;
+    const raised = !robot.attacking
+      ? 0
+      : elapsed < weapon.windup
+        ? elapsed / weapon.windup
+        : elapsed < weapon.hitTime
+          ? 1 - (elapsed - weapon.windup) / (weapon.hitTime - weapon.windup)
+          : 0;
+    model.pivot.rotation.set(0, 0, 0);
+    model.group.position.z = 0;
+    if (id === "hammer") model.pivot.rotation.x = raised * 1.35;
+    if (id === "mace")
+      model.pivot.rotation.y = robot.attacking
+        ? Math.sin(phase * Math.PI * 2) * 0.95
+        : 0;
+    if (id === "wedge")
+      model.pivot.rotation.x = robot.attacking
+        ? Math.sin(phase * Math.PI) * 1.0
+        : 0;
+    if (id === "spike" || id === "forks")
+      model.group.position.z = -Math.sin(phase * Math.PI) * 0.22;
+    if (model.rotor)
+      model.rotor.rotation.x += dt * (robot.attacking ? 35 : 1.5);
+  }
+}
+
 function createRobot(color, id) {
   const group = new THREE.Group(),
     metal = material(color, { roughness: 0.52, metalness: 0.45 });
@@ -219,25 +362,14 @@ function createRobot(color, id) {
     box(group, steel, [0.12, 0.21, 0.45], [x, 0.98, -0.5]);
     box(group, cream, [0.03, 0.06, 0.46], [x * 1.11, 0.88, 0.12]);
   }
-  // Fixed forward cannon, collar, cooling rings and open dark muzzle.
-  box(group, black, [0.65, 0.43, 0.5], [0, 1.18, -0.43]);
-  const barrel = cylinder(group, steel, 0.135, 1.02, [0, 1.2, -1.06]);
-  barrel.rotation.x = Math.PI / 2;
-  for (const z of [-0.68, -0.83, -1.02]) {
-    const ring = cylinder(group, black, 0.17, 0.08, [0, 1.2, z]);
-    ring.rotation.x = Math.PI / 2;
-  }
-  const muzzle = cylinder(group, black, 0.19, 0.24, [0, 1.2, -1.56]);
-  muzzle.rotation.x = Math.PI / 2;
-  const opening = mesh(
-    new THREE.CircleGeometry(0.12, 12),
-    material(0x101c17),
-    group,
-    0,
-    1.2,
-    -1.69,
+  const weapons = Object.fromEntries(
+    WEAPON_IDS.map((id) => {
+      const model = createMeleeWeapon(id, steel, black, metal);
+      model.group.visible = false;
+      group.add(model.group);
+      return [id, model];
+    }),
   );
-  opening.rotation.y = Math.PI;
   const bumper = box(group, steel, [1.8, 0.18, 0.18], [0, 0.55, -1.04]);
   bumper.rotation.x = 0.18;
   for (const x of [-0.55, 0.55])
@@ -329,7 +461,7 @@ function createRobot(color, id) {
   marker.position.set(0, 2.25, 0);
   marker.scale.set(2.5, 0.62, 1);
   group.add(marker);
-  return { group, wheels, metal, marker, groundRing };
+  return { group, wheels, metal, marker, groundRing, weapons };
 }
 
 export class Renderer {
@@ -355,6 +487,8 @@ export class Renderer {
     this.look = new THREE.Vector3();
     this.shake = 0;
     this.time = 0;
+    this.chase = new ChaseCamera();
+    this.wasHome = null;
     this.scene.add(new THREE.HemisphereLight(0xf4f6d7, 0x40544a, 2.4));
     const sun = new THREE.DirectionalLight(0xffefc9, 3.1);
     sun.position.set(-16, 27, 12);
@@ -374,20 +508,6 @@ export class Renderer {
     this.buildArena();
     this.robots = [createRobot(COLORS.mint, 0), createRobot(COLORS.orange, 1)];
     this.robots.forEach((robot) => this.scene.add(robot.group));
-    this.bulletMeshes = Array.from({ length: 32 }, () => {
-      const bullet = mesh(
-        new THREE.CapsuleGeometry(0.1, 0.48, 2, 6),
-        new THREE.MeshBasicMaterial({ color: 0xffdf84 }),
-        this.scene,
-        0,
-        0,
-        0,
-        false,
-      );
-      bullet.rotation.x = Math.PI / 2;
-      bullet.visible = false;
-      return bullet;
-    });
     const sparkGeometry = new THREE.BoxGeometry(0.085, 0.085, 0.2),
       sparkMaterial = new THREE.MeshBasicMaterial({ color: 0xffd083 });
     this.particles = Array.from({ length: CONFIG.effects.maxParticles }, () => {
@@ -589,7 +709,6 @@ export class Renderer {
   }
   handle(events) {
     for (const event of events) {
-      if (event.type === "fire") this.burst(event.x, event.z, 3, 0.4);
       if (event.type === "impact") this.burst(event.x, event.z, 7, 0.65);
       if (event.type === "damage") {
         this.burst(event.x, event.z, 12, 0.8);
@@ -606,10 +725,13 @@ export class Renderer {
       p.life = 0;
       p.object.visible = false;
     });
-    this.bulletMeshes.forEach((b) => (b.visible = false));
     this.shake = 0;
   }
-  update(sim, dt) {
+  resetView(robot) {
+    this.chase.reset(robot);
+    this.wasHome = null;
+  }
+  update(sim, dt, rear = false) {
     this.time += dt;
     const home = sim.state === "home";
     sim.robots.forEach((robot, id) => {
@@ -629,21 +751,22 @@ export class Renderer {
         visual.group.rotation.z = 0.16;
         visual.group.position.y = -0.19;
       }
+      if (robot.flipTime > 0 && !home && robot.hp > 0) {
+        const roll = Math.sin(
+          Math.PI * (1 - robot.flipTime / robot.flipDuration),
+        );
+        visual.group.rotation.z = roll * 2.8;
+        // Lift enough for the roof and wheels to clear the concrete during roll.
+        visual.group.position.y = roll * 1.7 + Math.sin(roll * 2.8) * 0.5;
+      }
+      animateMeleeWeapon(visual, robot, sim.state === "paused" ? 0 : dt);
       visual.wheels.forEach((w) => (w.rotation.x = robot.travel / 0.43));
-      visual.marker.visible = !home && robot.hp > 0;
-      visual.groundRing.visible = !home && robot.hp > 0;
+      visual.marker.visible =
+        !home && id === 1 && robot.hp > 0 && robot.flipTime <= 0;
+      visual.groundRing.visible = !home && robot.hp > 0 && robot.flipTime <= 0;
       visual.metal.emissive.setHex(robot.hitFlash > 0 ? 0xffffff : 0);
       visual.metal.emissiveIntensity = robot.hitFlash > 0 ? 0.7 : 0;
     });
-    for (let i = 0; i < this.bulletMeshes.length; i++) {
-      const bullet = sim.bullets[i],
-        object = this.bulletMeshes[i];
-      object.visible = Boolean(bullet);
-      if (bullet) {
-        object.position.set(bullet.x, 1.15, bullet.z);
-        object.rotation.set(Math.PI / 2, 0, Math.atan2(bullet.dx, -bullet.dz));
-      }
-    }
     if (sim.state !== "paused")
       for (const particle of this.particles) {
         if (particle.life <= 0) continue;
@@ -657,27 +780,37 @@ export class Renderer {
           Math.max(0.01, particle.life / particle.maxLife),
         );
       }
-    const aspect = this.camera.aspect;
-    // Narrow windows need more distance to preserve lateral anticipation.
-    const zoom = aspect < 1.25 ? Math.min(1.6, 1.25 / aspect) : 1;
-    const desired = new THREE.Vector3(
-      home
-        ? 0
-        : clamp(sim.robots[0].x, -CONFIG.camera.followX, CONFIG.camera.followX),
-      0,
-      home
-        ? 4
-        : clamp(sim.robots[0].z, -CONFIG.camera.followZ, CONFIG.camera.followZ),
-    );
-    this.target.lerp(desired, 1 - Math.exp(-CONFIG.camera.smoothing * dt));
-    this.shake = Math.max(0, this.shake - dt * 0.7);
-    this.camera.position.set(
-      this.target.x + (Math.random() - 0.5) * this.shake,
-      CONFIG.camera.height * zoom,
-      this.target.z + CONFIG.camera.distance * zoom,
-    );
+    const desiredFov = home ? CONFIG.camera.home.fov : CONFIG.camera.fov;
+    if (this.camera.fov !== desiredFov) {
+      this.camera.fov = desiredFov;
+      this.camera.updateProjectionMatrix();
+    }
+    if (home) {
+      this.camera.position.set(
+        0,
+        CONFIG.camera.home.height,
+        4 + CONFIG.camera.home.distance,
+      );
+      this.target.set(0, 0, 4);
+    } else {
+      if (this.wasHome !== false) this.chase.reset(sim.robots[0]);
+      const pose = this.chase.update(
+        sim.robots[0],
+        dt,
+        rear,
+        this.camera.aspect,
+      );
+      this.shake = Math.max(0, this.shake - dt * 0.7);
+      const shake = (Math.random() - 0.5) * this.shake;
+      this.camera.position.set(
+        pose.position.x + shake,
+        pose.position.y,
+        pose.position.z,
+      );
+      this.target.set(pose.target.x + shake, pose.target.y, pose.target.z);
+    }
+    this.wasHome = home;
     this.look.copy(this.target);
-    this.look.y = 0;
     this.camera.lookAt(this.look);
     this.renderer.render(this.scene, this.camera);
   }

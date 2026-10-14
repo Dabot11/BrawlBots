@@ -15,8 +15,7 @@ export function positionFree(x, z, radius, obstacles = OBSTACLES) {
   );
 }
 
-// Parametric segment intersections detect hits even when a projectile crosses
-// the whole target between frames. The earliest hit wins.
+// Segment/box intersections support navigation clearance and mechanical reach.
 export function segmentBox(from, to, box, padding = 0) {
   let enter = 0,
     exit = 1;
