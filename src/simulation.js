@@ -2,12 +2,17 @@ import { createRobot, drive } from "./robots.js";
 import { Navigation } from "./navigation.js";
 import { RivalAI } from "./ai.js";
 import { separateRobots } from "./collision.js";
-import { startAttack, updateAttack } from "./weapons.js";
-import { WEAPON_IDS } from "./config.js";
+import { startAttack, updateAttack, applyHit } from "./weapons.js";
+import {
+  normalizeLoadout,
+  DEFAULT_LOADOUT,
+  RIVAL_LOADOUT,
+  CATEGORIES,
+} from "./loadout.js";
 
 export class Simulation {
-  constructor() {
-    this.playerWeapon = "hammer";
+  constructor(loadout = DEFAULT_LOADOUT) {
+    this.loadout = normalizeLoadout(loadout);
     this.ai = new RivalAI(new Navigation());
     this.state = "home";
     this.reset();
@@ -15,8 +20,8 @@ export class Simulation {
   }
   reset() {
     this.robots = [
-      createRobot(0, undefined, this.playerWeapon),
-      createRobot(1),
+      createRobot(0, undefined, this.loadout.weapon, this.loadout),
+      createRobot(1, undefined, RIVAL_LOADOUT.weapon, RIVAL_LOADOUT),
     ];
     this.events = [];
     this.elapsed = 0;
@@ -30,10 +35,29 @@ export class Simulation {
     this.reset();
     this.state = "home";
   }
-  selectWeapon(id) {
-    if (this.state !== "home" || !WEAPON_IDS.includes(id)) return false;
-    this.playerWeapon = this.robots[0].weaponId = id;
+  get playerWeapon() {
+    return this.loadout.weapon;
+  }
+  garage() {
+    if (this.state !== "home") return false;
+    this.state = "garage";
     return true;
+  }
+  selectPart(category, id) {
+    if (!["home", "garage"].includes(this.state)) return false;
+    const slot = CATEGORIES.find((item) => item.id === category);
+    if (!slot || !Object.hasOwn(slot.catalog, id)) return false;
+    this.loadout = { ...this.loadout, [category]: id };
+    this.robots[0] = createRobot(
+      0,
+      undefined,
+      this.loadout.weapon,
+      this.loadout,
+    );
+    return true;
+  }
+  selectWeapon(id) {
+    return this.selectPart("weapon", id);
   }
   pause() {
     if (this.state === "playing" || this.state === "countdown") {
@@ -62,15 +86,17 @@ export class Simulation {
     drive(player, playerInput, dt);
     drive(rival, rivalInput, dt);
     separateRobots(player, rival);
-    for (const [robot, input] of [
-      [player, playerInput],
-      [rival, rivalInput],
-    ]) {
-      if (input.attack) startAttack(robot, this.events);
-      updateAttack(robot, this.robots, dt, this.events);
-    }
+    if (playerInput.attack) startAttack(player, this.events);
+    if (rivalInput.attack) startAttack(rival, this.events);
+    const hits = [];
+    // Evaluate both striking windows before damage or stun: ties have no owner priority.
+    for (const robot of this.robots)
+      updateAttack(robot, this.robots, dt, this.events, hits);
+    for (const hit of hits)
+      applyHit(hit.attacker, hit.target, hit.weapon, this.events);
     if (player.hp <= 0 || rival.hp <= 0) {
-      this.winner = player.hp <= 0 ? 1 : 0;
+      this.winner =
+        player.hp <= 0 && rival.hp <= 0 ? -1 : player.hp <= 0 ? 1 : 0;
       this.state = "result";
       player.speedNow = rival.speedNow = 0;
       player.attacking = rival.attacking = false;

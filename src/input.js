@@ -31,10 +31,19 @@ export class Input {
       "Enter",
     ];
     window.addEventListener("keydown", (event) => {
-      if (!relevant.includes(event.code)) return;
+      if (
+        !relevant.includes(event.code) ||
+        (event.target?.matches?.("input, textarea, select") &&
+          !["Escape", "KeyP"].includes(event.code))
+      )
+        return;
       event.preventDefault();
       if (event.repeat || !this.enabled) return;
       this.use("keyboard");
+      if (event.code === "Space" && event.target?.closest?.("button")) {
+        event.target.closest("button").click();
+        return;
+      }
       this.keys.add(event.code);
       if (event.code === "Escape" || event.code === "KeyP") onAction("pause");
       if (["KeyQ", "ArrowLeft"].includes(event.code))
@@ -133,6 +142,7 @@ export class Input {
     if (this.enabled) {
       if (buttons[9] && !this.previousButtons[9]) this.onAction("pause");
       if (buttons[0] && !this.previousButtons[0]) this.onAction("confirm");
+      if (buttons[1] && !this.previousButtons[1]) this.onAction("back");
       if (
         (buttons[4] && !this.previousButtons[4]) ||
         (buttons[14] && !this.previousButtons[14])

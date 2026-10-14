@@ -20,7 +20,12 @@ export class RivalAI {
     if (robot.stun > 0 || robot.flipTime > 0 || robot.hp <= 0) {
       this.last = { x: robot.x, z: robot.z };
       this.stuckTime = 0;
-      return (this.command = { throttle: 0, turn: 0, attack: false });
+      return (this.command = {
+        throttle: 0,
+        turn: 0,
+        attack:
+          robot.hp > 0 && robot.flipTime <= 0 && Boolean(robot.weapon?.steady),
+      });
     }
     this.reaction -= dt;
     this.repath -= dt;
@@ -48,7 +53,7 @@ export class RivalAI {
     }
     if (this.reaction > 0) return this.command;
     this.reaction = CONFIG.ai.reaction;
-    const weapon = WEAPONS[robot.weaponId];
+    const weapon = robot.weapon || WEAPONS[robot.weaponId];
     const distance = Math.hypot(robot.x - target.x, robot.z - target.z);
     const visible = lineClear(robot, target, 0.08);
     const clearDrive = lineClear(robot, target, robot.radius + 0.2);

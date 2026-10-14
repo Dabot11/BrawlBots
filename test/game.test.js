@@ -412,6 +412,24 @@ test("keyboard P pauses once; C is a held rear view; controller uses RT and RS",
   key("KeyP", true);
   assert.deepEqual(actions, ["pause"]);
   handlers.keyup({ code: "KeyP" });
+  const nativeInput = { matches: () => true };
+  handlers.keydown({
+    code: "ArrowRight",
+    target: nativeInput,
+    repeat: false,
+    preventDefault() {
+      throw new Error("slider arrow must stay native");
+    },
+  });
+  assert.equal(input.keys.has("ArrowRight"), false);
+  handlers.keydown({
+    code: "KeyP",
+    target: nativeInput,
+    repeat: false,
+    preventDefault() {},
+  });
+  assert.equal(actions.filter((a) => a === "pause").length, 2);
+  handlers.keyup({ code: "KeyP" });
   key("KeyC");
   assert.equal(input.poll().rear, true);
   handlers.keyup({ code: "KeyC" });
@@ -429,7 +447,7 @@ test("keyboard P pauses once; C is a held rear view; controller uses RT and RS",
   pad.buttons[9] = { pressed: true, value: 1 };
   input.poll();
   input.poll();
-  assert.equal(actions.filter((a) => a === "pause").length, 2);
+  assert.equal(actions.filter((a) => a === "pause").length, 3);
   pad = null;
   input.poll();
   assert.equal(actions.at(-1), "disconnect");

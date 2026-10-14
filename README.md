@@ -1,6 +1,6 @@
 # Brawl Bots
 
-**Arma tu robot. Domina la arena.** Versión 0.2: combate cuerpo a cuerpo y cámara de seguimiento. Primera versión jugable de un duelo entre robots con ruedas, en el **Patio de Chatarra**. Remache (turquesa, antena y distintivo 01) se enfrenta a Óxido (naranja, aletas y distintivo 02).
+**Construye tu ventaja.** Versión 0.3: garaje modular, taller 3D y sonido mecánico. Un duelo entre robots con ruedas en el **Patio de Chatarra**. Remache, con el color que elijas, antena y distintivo 01, se enfrenta a Óxido (naranja, aletas y distintivo 02).
 
 Juego web de escritorio con WebGL real, Three.js y Vite. Modelos, texturas, arena y sonidos se generan localmente; no hay CDN, servicios, cuentas ni claves de API. La interfaz está en español.
 
@@ -20,7 +20,27 @@ Vite muestra la dirección del servidor y usa el puerto 5173 por defecto. En est
 npm ci --cache /workspace/.npm-cache --no-audit --no-fund
 ```
 
-Chrome reciente con aceleración gráfica es la plataforma inicial. No requiere backend. Pulsa **Jugar**, Enter o A en el mando. Tras tres segundos empieza el combate. Elige pico, picos dobles, mazo, martillo, sierra o cuña volteadora en el inicio. Usa Q/E o las flechas laterales (LB/RB en el mando) para cambiar el arma. Acércate al rival para golpear; los obstáculos bloquean el contacto y la IA busca rutas alrededor de ellos.
+Chrome reciente con aceleración gráfica es la plataforma inicial. No requiere backend. **Entrar al garaje**, Enter o A abre el taller; **Jugar** permite entrar directamente con el robot guardado. En el garaje, elige piezas y pulsa **Combatir**. Tras tres segundos empieza el combate. Acércate al rival para golpear; los obstáculos bloquean el contacto y la IA busca rutas alrededor de ellos.
+
+## Garaje y equilibrio
+
+Cada robot tiene cinco espacios independientes. Todas las piezas están disponibles desde el inicio. Hay **360 montajes funcionales** y seis colores, para **2.160 combinaciones visuales**.
+
+| Espacio  | Opciones                                                        | Decisión                                                             |
+| -------- | --------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Arma     | Pico, picos dobles, mazo, martillo, sierra, cuña                | Precisión, contacto, empuje, golpe pesado, presión o vuelco          |
+| Ruedas   | Mixtas, velocidad, ágiles, todo terreno                         | Velocidad punta frente a giro, aceleración y resistencia al empuje   |
+| Carcasa  | Aleación, ultraligera, acorazada                                | Integridad y blindaje frente a movilidad                             |
+| Auxiliar | Ninguno, sobremarcha, servo de impacto, defensas, estabilizador | Potencia, velocidad, protección frontal o recuperación, con un coste |
+| Color    | Menta, mandarina, cobalto, orquídea, marfil, carmín             | Solo apariencia; no altera estadísticas                              |
+
+La ficha muestra los valores que usa el combate: integridad máxima, daño por golpe, daño/s ideal, velocidad, aceleración, giro y protección frontal. Los multiplicadores se combinan por espacio; el daño se redondea a puntos enteros. El peso de la herramienta afecta velocidad y giro. La defensa frontal combina la cuña y el auxiliar sin sumar porcentajes; el blindaje de la carcasa se aplica aparte. El todo terreno reduce los empujes y el estabilizador reduce la duración de aturdimientos y vuelcos. No hay curación, proyectiles ni ventajas ocultas por color.
+
+Todas las combinaciones quedan entre **85–110 de integridad**, **4,7–10,0 m/s**, **91–200°/s de giro** y hasta **40,8% de reducción frontal total**. El daño sostenido ideal está entre 6,7 y 24,7 puntos/s; es solo una referencia, ya que el alcance, la orientación, los obstáculos, la preparación y las interrupciones cambian el resultado de un duelo. La sierra se ajustó a 6 puntos cada 0,3 s y mantiene el corte durante aturdimientos, pero se detiene al volcar; el martillo pega más fuerte pero tarda en recuperar y pesa más. Los golpes que coinciden en el mismo paso se resuelven juntos, con empate si ambos robots quedan destruidos.
+
+El equilibrio es una base inicial, no una garantía de igualdad de victorias entre armas. Las pruebas comprueban límites en los 360 montajes, ventajas/costes de cada rueda, carcasa y auxiliar, y que los efectos funcionen realmente al conducir y golpear. La revisión incluye duelos con la misma IA desde ambos lados de la arena; la IA no reemplaza probar estrategias humanas. Las definiciones están centralizadas en `src/loadout.js` y `src/config.js` para poder ajustar números sin cambiar la interfaz ni duplicar reglas.
+
+El modelo 3D actualiza piezas y pintura en el taller. Puedes girarlo y probar la animación del arma antes de entrar. La configuración se guarda en `localStorage` de este navegador, se conserva en revancha y al recargar, y se bloquea durante el duelo. Si el navegador impide guardar, el juego sigue funcionando; los datos inválidos vuelven a valores conocidos. Los modelos y materiales se reutilizan al cambiar piezas. El taller solo se vuelve a dibujar al cambiar piezas, encuadre o animación, para reducir trabajo gráfico mientras está quieto.
 
 ## Compilar y publicar como archivos estáticos
 
@@ -50,24 +70,26 @@ Este es el flujo autorizado por el propietario para las siguientes entregas de B
 
 ## Controles
 
-| Acción                   | Teclado                        | Mando Xbox / mapeo estándar       |
-| ------------------------ | ------------------------------ | --------------------------------- |
-| Avanzar / retroceder     | W / S o ↑ / ↓                  | Stick izquierdo vertical          |
-| Girar, también detenido  | A / D o ← / →                  | Stick izquierdo horizontal        |
-| Atacar cuerpo a cuerpo   | Mantener Espacio               | Mantener RT                       |
-| Pausar / reanudar        | P o Escape                     | Menu                              |
-| Confirmar un menú        | Enter                          | A                                 |
-| Elegir una opción        | W / S o ↑ / ↓                  | Cruceta vertical o stick vertical |
-| Mirar hacia atrás        | Mantener C o botón «Ver atrás» | Mantener RS (stick derecho)       |
-| Elegir arma en el inicio | Q/E o ←/→                      | LB/RB o cruceta lateral           |
+| Acción                    | Teclado                        | Mando Xbox / mapeo estándar       |
+| ------------------------- | ------------------------------ | --------------------------------- |
+| Avanzar / retroceder      | W / S o ↑ / ↓                  | Stick izquierdo vertical          |
+| Girar, también detenido   | A / D o ← / →                  | Stick izquierdo horizontal        |
+| Atacar cuerpo a cuerpo    | Mantener Espacio               | Mantener RT                       |
+| Pausar / reanudar         | P o Escape                     | Menu                              |
+| Confirmar un menú         | Enter                          | A                                 |
+| Elegir una opción         | W / S o ↑ / ↓                  | Cruceta vertical o stick vertical |
+| Mirar hacia atrás         | Mantener C o botón «Ver atrás» | Mantener RS (stick derecho)       |
+| Elegir pieza en el garaje | Q/E o ←/→                      | LB/RB o cruceta lateral           |
+| Cambiar categoría         | W/S o ↑/↓                      | Cruceta vertical o stick vertical |
+| Volver del garaje         | Escape o botón Volver          | B                                 |
 
-El mando debe usar `mapping: 'standard'` de Gamepad API. Si no aparece, pulsa un botón con la página activa. Puedes alternar teclado y mando durante el duelo. La ayuda cambia según el último dispositivo usado; **?** permite ocultarla y la nota musical permite silenciar el sonido. El audio se activa tras una interacción. Algunos navegadores pueden exigir primero un clic o una tecla para habilitarlo.
+El mando debe usar `mapping: 'standard'` de Gamepad API. Si no aparece, pulsa un botón con la página activa. Puedes alternar teclado y mando durante el duelo. La ayuda cambia según el último dispositivo usado; **?** permite ocultarla y la nota musical permite silenciar el sonido. El audio se activa tras una interacción. El botón de ajustes permite cambiar el volumen; la nota musical silencia todo. Volumen y silencio se guardan en este navegador. Hay motor que responde a la conducción, ataques diferenciados, metal y graves para impactos, cuenta regresiva y señales de menú; los sonidos se sintetizan con capas tonales y ruido filtrado, con compresión y un máximo de voces. Algunos navegadores pueden exigir primero un clic o una tecla para habilitarlo.
 
 Perder el foco o desconectar el mando activo pausa la partida y limpia las teclas. Recuperar el foco no reanuda automáticamente: confirma **Reanudar**. Los menús de pausa y resultado permiten reiniciar o regresar al inicio; los botones mantenidos no repiten confirmaciones.
 
 ## Implementación
 
-- Arena plana con cinco obstáculos sólidos, límites físicos y decoración fuera del terreno jugable. Cámara en tercera persona elevada, detrás del robot y orientada con él. C o RS permiten mirar hacia atrás; el botón de pantalla alterna esa vista. La cámara puede salir del perímetro para mantener el encuadre.
+- Arena plana con cinco obstáculos sólidos, límites físicos y decoración fuera del terreno jugable. Taller con plataforma y vista 3D, reflejos procedurales y materiales metálicos. Cámara en tercera persona elevada, detrás del robot y orientada con él. C o RS permiten mirar hacia atrás; el botón de pantalla alterna esa vista. La cámara puede salir del perímetro para mantener el encuadre.
 - Conducción con aceleración, frenado, marcha atrás más lenta, ruedas animadas y colisión circular del chasis con deslizamiento por ejes. Los dos robots obedecen las mismas reglas físicas.
 - Seis armas exclusivamente cuerpo a cuerpo: pico (estocada), picos dobles (contacto más amplio), mazo (barrido y empuje), martillo (golpe pesado), sierra (corte continuo) y cuña (blindaje frontal y vuelco). Cada una tiene un modelo y animación propios. Los golpes requieren alcance, orientación y un trayecto libre de obstáculos; tienen preparación, recuperación y un único impacto por ciclo. No hay armas de fuego ni proyectiles.
 - El daño causa empujones limitados por las colisiones. La cuña reduce el daño frontal y vuelca al rival brevemente, interrumpiendo su conducción y ataque; se recupera automáticamente. El vuelco es una animación con estado de recuperación, no una simulación completa de cuerpos rígidos.
@@ -84,6 +106,8 @@ Perder el foco o desconectar el mando activo pausa la partida y limpia las tecla
 | `src/weapons.js`                 | Preparación, alcance, golpes, empujes y vuelcos                        |
 | `src/collision.js`               | Chasis, cobertura y barridos de colisión                               |
 | `src/navigation.js`, `src/ai.js` | A\* y decisiones del rival                                             |
+| `src/loadout.js`                 | Catálogo modular, estadísticas y persistencia local                    |
+| `src/garage.js`                  | Categorías, tarjetas de piezas y ficha del montaje                     |
 | `src/camera.js`                  | Cámara detrás del robot y vista hacia atrás                            |
 | `src/render.js`                  | Modelos, arena, cámara, iluminación y efectos                          |
 | `src/audio.js`                   | Sonidos procedurales y silencio                                        |
@@ -92,7 +116,7 @@ Perder el foco o desconectar el mando activo pausa la partida y limpia las tecla
 
 ## Verificación
 
-`npm test` ejecuta pruebas con el runner nativo de Node: orientación, avance y retroceso, colisiones, separación de robots, alcance de las seis armas, golpes bloqueados por obstáculos, recuperación, blindaje, vuelcos, rutas, recuperación de IA, resultados, pausa, cuenta regresiva y reinicio. También verifica que la cámara mantenga la dirección del robot, la vista hacia atrás, la tecla P y las entradas del mando. No necesita dependencias de pruebas.
+`npm test` ejecuta pruebas con el runner nativo de Node: orientación, avance y retroceso, colisiones, separación de robots, alcance de las seis armas, golpes bloqueados por obstáculos, recuperación, blindaje, vuelcos, rutas, recuperación de IA, resultados, pausa, cuenta regresiva y reinicio. Las pruebas adicionales de montaje comprueban límites de todas las combinaciones, piezas con ventajas y costes, efectos reales de conducción/daño/defensas/recuperación, almacenamiento y golpes simultáneos. También verifica que la cámara mantenga la dirección del robot, la vista hacia atrás, la tecla P y las entradas del mando. No necesita dependencias de pruebas.
 
 La revisión en navegador de esta entrega usa Chromium con renderizado WebGL por software, teclado y un mando estándar virtual. Se comprueban además los menús, el foco, la desconexión, el cambio de dispositivo, el sonido, el redimensionado y que los reinicios no aumenten las geometrías/texturas. Las capturas y el informe local se guardan en `artifacts/` (ignorado por Git). No se ha probado un control Xbox físico ni se ha medido el rendimiento en una MacBook Air M2.
 
@@ -102,8 +126,9 @@ Comprobación manual pendiente en Chrome/macOS con un mando Xbox físico:
 2. Verificar avance analógico, marcha atrás, giro detenido, zona muerta y ataque continuo con RT; RS debe mostrar la vista hacia atrás.
 3. Abrir pausa con Menu, recorrer las opciones con cruceta y stick, confirmar con A; mantener botones no debe repetir acciones.
 4. Desconectar durante el combate: debe pausarse. Reanudar con teclado y reconectar sin reiniciar.
-5. Comprobar audio, visibilidad de ambos robots y fluidez en la resolución habitual durante varios duelos.
+5. Elegir piezas con LB/RB, categoría con cruceta y volver con B; confirmar montaje con A.
+6. Comprobar audio, visibilidad de ambos robots y fluidez en la resolución habitual durante varios duelos.
 
 ## Límites de esta versión
 
-Solo escritorio, un mapa, un chasis por bando y seis armas cuerpo a cuerpo seleccionables antes del duelo. No hay controles táctiles, garaje, tienda, progresión ni multijugador. Se busca 60 FPS, con densidad de píxeles limitada a 1.75, sombras de 1024 y un máximo de 160 partículas; el rendimiento real depende de la máquina. En equipos sin aceleración WebGL, el renderizado por software puede ser lento. Las colisiones del robot aproximan el chasis con un círculo; no se simulan suspensión, impactos de piezas individuales ni suspensión física. Los vuelcos de la cuña usan una animación temporizada con recuperación automática.
+Solo escritorio y un mapa. El garaje permite un arma, ruedas, carcasa, un auxiliar y pintura por robot; no permite apilar módulos en el mismo espacio. No hay controles táctiles, tienda, progresión ni multijugador. Se busca 60 FPS, con densidad de píxeles limitada a 1.75, sombras de 1024 y un máximo de 160 partículas; el rendimiento real depende de la máquina. En equipos sin aceleración WebGL, el renderizado por software puede ser lento. Las colisiones del robot aproximan el chasis con un círculo; no se simulan suspensión, impactos de piezas individuales ni suspensión física. Los vuelcos de la cuña usan una animación temporizada con recuperación automática.

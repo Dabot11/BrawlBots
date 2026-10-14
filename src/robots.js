@@ -1,13 +1,25 @@
-import { ROBOT, SPAWNS, clamp } from "./config.js";
+import { SPAWNS, clamp } from "./config.js";
+import { deriveLoadout, DEFAULT_LOADOUT } from "./loadout.js";
 import { moveCircle } from "./collision.js";
 
 export function createRobot(
   id,
-  definition = ROBOT,
+  definition,
   weaponId = id === 0 ? "hammer" : "saw",
+  loadout,
 ) {
+  const built = deriveLoadout(
+    loadout || {
+      ...DEFAULT_LOADOUT,
+      weapon: weaponId,
+      paint: id === 0 ? "mint" : "orange",
+    },
+  );
+  definition ||= built.stats;
   return {
     ...definition,
+    loadout: built.loadout,
+    weapon: built.weapon,
     ...SPAWNS[id],
     id,
     hp: definition.health,

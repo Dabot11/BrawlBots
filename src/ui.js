@@ -1,9 +1,12 @@
 import { WEAPONS, WEAPON_IDS, heading, angleDifference } from "./config.js";
+import { Garage } from "./garage.js";
+import { CATEGORIES } from "./loadout.js";
 const $ = (id) => document.getElementById(id);
 
 export class UI {
   constructor(onAction) {
     this.onAction = onAction;
+    this.garage = new Garage(onAction);
     this.state = null;
     this.selected = 0;
     this.options = [];
@@ -12,8 +15,11 @@ export class UI {
     this.noticeTimer = 0;
     $("pause").onclick = () => onAction("pause");
     $("rear-view").onclick = () => onAction("rear");
-    $("weapon-prev").onclick = () => onAction("previous-weapon");
-    $("weapon-next").onclick = () => onAction("next-weapon");
+    $("audio-settings").onclick = () => {
+      const open = $("audio-panel").hidden;
+      $("audio-panel").hidden = !open;
+      $("audio-settings").setAttribute("aria-expanded", String(open));
+    };
     $("brand").onclick = (event) => {
       event.preventDefault();
       onAction("brand");
@@ -39,13 +45,12 @@ export class UI {
     $("rear-controls").innerHTML = pad
       ? "<kbd>RS</kbd><span>MIRAR ATRÁS</span>"
       : "<kbd>C</kbd><span>MIRAR ATRÁS</span>";
-    $("weapon-hint").textContent = pad
-      ? "LB / RB o ← → PARA ELEGIR"
-      : "Q / E o ← → PARA ELEGIR";
     $("menu-confirm").textContent = pad
       ? "A PARA CONFIRMAR · STICK / CRUCETA PARA ELEGIR"
       : "ENTER PARA CONFIRMAR · ↑ ↓ PARA ELEGIR";
-    $("controls").hidden = !this.help;
+    $("controls").hidden =
+      !this.help || ["home", "garage"].includes(this.state);
+    this.garage.controls(this.device);
     $("help-toggle").setAttribute("aria-pressed", String(!this.help));
     $("help-toggle").setAttribute(
       "aria-label",
@@ -66,11 +71,12 @@ export class UI {
     this.noticeTimer = seconds;
   }
   loadout(sim) {
-    const weapon = WEAPONS[sim.playerWeapon];
-    $("weapon-name").textContent = weapon.name;
-    $("weapon-description").textContent = weapon.description;
-    $("weapon-count").textContent =
-      `${WEAPON_IDS.indexOf(sim.playerWeapon) + 1} / ${WEAPON_IDS.length}`;
+    $("home-build").textContent =
+      "TU BOT / " +
+      CATEGORIES.filter((slot) => slot.id !== "paint")
+        .map((slot) => slot.catalog[sim.loadout[slot.id]].name)
+        .join(" · ");
+    this.garage.update(sim);
   }
   rearView(rear) {
     $("rear-view").setAttribute("aria-pressed", String(Boolean(rear)));
@@ -94,15 +100,20 @@ export class UI {
     });
   }
   confirm() {
+    if (this.state === "garage") {
+      this.onAction("play");
+      return;
+    }
     if (this.options[this.selected])
       this.onAction(this.options[this.selected][1]);
   }
   showMenu(sim) {
     const home = sim.state === "home",
       paused = sim.state === "paused";
-    const victory = sim.winner === 0;
+    const victory = sim.winner === 0,
+      draw = sim.winner === -1;
     if (home) this.notify("", 0);
-    $("weapon-picker").hidden = !home;
+
     this.loadout(sim);
     $("menu").classList.toggle("compact-menu", !home);
     $("menu").classList.toggle("victory-menu", !home && !paused && victory);
@@ -113,32 +124,41 @@ export class UI {
       ? 'BRAWL<br /><span>BOTS<span class="title-dot">.</span></span>'
       : paused
         ? 'EN<br /><span>PAUSA<span class="title-dot">.</span></span>'
-        : victory
-          ? "<span>¡VICTORIA!</span>"
-          : "ROBOT<br /><span>DESTRUIDO</span>";
+        : draw
+          ? "<span>EMPATE</span>"
+          : victory
+            ? "<span>¡VICTORIA!</span>"
+            : "ROBOT<br /><span>DESTRUIDO</span>";
     $("menu").querySelector(".eyebrow").innerHTML =
       '<span class="tiny-line"></span> ' +
       (home
-        ? "PEQUEÑOS ROBOTS. GRANDES BATALLAS."
+        ? "INGENIERÍA CASERA. COMBATE SIN DISTANCIA."
         : paused
           ? "UN RESPIRO ENTRE CHISPAS"
-          : victory
-            ? "EL PATIO TIENE UN NUEVO CAMPEÓN"
-            : "TODAVÍA QUEDAN PIEZAS POR RECUPERAR");
+          : draw
+            ? "LOS DOS ROBOTS DIERON TODO"
+            : victory
+              ? "EL PATIO TIENE UN NUEVO CAMPEÓN"
+              : "TODAVÍA QUEDAN PIEZAS POR RECUPERAR");
     $("menu").querySelector(".tagline").textContent = home
-      ? "Arma tu robot. Domina la arena."
+      ? "Construye tu ventaja."
       : paused
         ? "La arena puede esperar."
-        : victory
-          ? "Óxido ha quedado fuera de combate."
-          : "Remache necesita unas reparaciones.";
+        : draw
+          ? "Ambos robots quedaron fuera de combate."
+          : victory
+            ? "Óxido ha quedado fuera de combate."
+            : "Remache necesita unas reparaciones.";
     $("menu").querySelector(".intro").innerHTML = home
-      ? 'Picos, golpes y metal. Entra al patio,<br class="desktop-break" /> acércate al rival y deja que salten las chispas.'
+      ? 'Elige tus piezas, ajusta tu estilo y entra al patio.<br class="desktop-break" /> Un duelo de metal. Cada golpe se siente.'
       : paused
         ? "Vuelve cuando estés listo. Cada pieza cuenta."
         : "Duración del duelo: " + this.time(sim.elapsed) + ". ¿Otra ronda?";
     this.options = home
-      ? [["Jugar", "play"]]
+      ? [
+          ["Entrar al garaje", "garage"],
+          ["Jugar", "play"],
+        ]
       : paused
         ? [
             ["Reanudar", "resume"],
@@ -175,6 +195,8 @@ export class UI {
       .padStart(2, "0")}`;
   }
   update(sim, dt) {
+    this.garage.update(sim);
+    $("app").classList.toggle("garage-open", sim.state === "garage");
     this.noticeTimer = Math.max(0, this.noticeTimer - dt);
     if (this.noticeTimer === 0) $("notice").textContent = "";
     const menuVisible = ["home", "paused", "result"].includes(sim.state);
@@ -183,12 +205,13 @@ export class UI {
       $("menu").hidden = !menuVisible;
       if (menuVisible) this.showMenu(sim);
       else {
+        this.controls();
         this.options = [];
         $("app").classList.remove("home", "overlay");
       }
-      $("hud").hidden = sim.state === "home";
-      $("rear-view").hidden = sim.state === "home";
-      $("weapon-status").hidden = sim.state === "home";
+      $("hud").hidden = ["home", "garage"].includes(sim.state);
+      $("rear-view").hidden = ["home", "garage"].includes(sim.state);
+      $("weapon-status").hidden = ["home", "garage"].includes(sim.state);
       $("countdown").hidden = sim.state !== "countdown";
     }
     if (sim.state === "countdown")
@@ -196,10 +219,12 @@ export class UI {
         `<span>PREPARA TU ROBOT</span><b>${Math.max(1, Math.ceil(sim.countdown))}</b>`;
     $("player-health").textContent = sim.robots[0].hp;
     $("enemy-health").textContent = sim.robots[1].hp;
-    $("player-fill").style.width = `${sim.robots[0].hp}%`;
-    $("enemy-fill").style.width = `${sim.robots[1].hp}%`;
+    $("player-fill").style.width =
+      `${(sim.robots[0].hp / sim.robots[0].health) * 100}%`;
+    $("enemy-fill").style.width =
+      `${(sim.robots[1].hp / sim.robots[1].health) * 100}%`;
     const [player, rival] = sim.robots;
-    const weapon = WEAPONS[player.weaponId];
+    const weapon = player.weapon;
     const readiness = Math.max(0, 1 - player.cooldown / weapon.interval);
     $("weapon-ready").style.width = `${readiness * 100}%`;
     $("weapon-state").textContent =

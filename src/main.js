@@ -5,8 +5,13 @@ import { Input } from "./input.js";
 import { Renderer } from "./render.js";
 import { Sound } from "./audio.js";
 import { UI } from "./ui.js";
+import { readLoadout, saveLoadout } from "./loadout.js";
 
-const sim = new Simulation(),
+let storage;
+try {
+  storage = window.localStorage;
+} catch {}
+const sim = new Simulation(readLoadout(storage)),
   sound = new Sound();
 let renderer,
   input,
@@ -22,18 +27,61 @@ function start() {
   input?.clear();
   accumulator = 0;
   sound.unlock();
+  sound.cancelTransient();
   document.getElementById("viewport").focus({ preventScroll: true });
   ui.notify("Patio de Chatarra · Acércate, golpea y protege tus flancos.", 3);
 }
 function action(name) {
+  if (name === "garage") {
+    if (sim.garage()) {
+      sound.unlock();
+      sound.ui("enter");
+      renderer?.resetPreview();
+    }
+    return;
+  }
+  if (name === "category") {
+    sound.unlock();
+    sound.ui("select");
+    ui.garage.update(sim);
+    return;
+  }
+  if (name.startsWith("part:")) {
+    const [, category, id] = name.split(":");
+    if (sim.selectPart(category, id)) {
+      saveLoadout(storage, sim.loadout);
+      sound.unlock();
+      sound.ui("equip");
+      ui.loadout(sim);
+    }
+    return;
+  }
+  if (name === "preview-left" || name === "preview-right") {
+    renderer?.rotatePreview(name === "preview-left" ? -0.45 : 0.45);
+    return;
+  }
+  if (name === "preview-test") {
+    renderer?.testPreview();
+    sound.unlock();
+    sound.event({ type: "attack", owner: 0, weapon: sim.playerWeapon }, sim);
+    return;
+  }
+  if (name === "back") {
+    if (sim.state === "garage") action("home");
+    return;
+  }
+
   if (name === "previous-weapon" || name === "next-weapon") {
+    if (sim.state === "garage") {
+      action(ui.garage.cycle(sim, name === "next-weapon" ? 1 : -1));
+      return;
+    }
     if (sim.state === "home") {
       const delta = name === "next-weapon" ? 1 : -1;
       const index =
         (WEAPON_IDS.indexOf(sim.playerWeapon) + delta + WEAPON_IDS.length) %
         WEAPON_IDS.length;
-      sim.selectWeapon(WEAPON_IDS[index]);
-      ui.loadout(sim);
+      action(`part:weapon:${WEAPON_IDS[index]}`);
     }
     return;
   }
@@ -44,16 +92,29 @@ function action(name) {
   }
   if (name === "sound") {
     sound.unlock();
-    sound.muted = !sound.muted;
+    sound.setMuted(!sound.muted);
     ui.sound(sound.muted);
     return;
   }
   if (name === "confirm") {
     sound.unlock();
+    if (
+      sim.state === "garage" &&
+      input?.device === "keyboard" &&
+      document.activeElement?.matches("#garage button")
+    ) {
+      document.activeElement.click();
+      return;
+    }
     ui.confirm();
     return;
   }
   if (name === "up" || name === "down") {
+    if (sim.state === "garage") {
+      ui.garage.moveCategory(name === "up" ? -1 : 1);
+      action("category");
+      return;
+    }
     if (["home", "paused", "result"].includes(sim.state))
       ui.menuMove(name === "up" ? -1 : 1);
     return;
@@ -71,27 +132,36 @@ function action(name) {
   if (name === "home") {
     rearToggled = false;
     sim.home();
+    sound.cancelTransient();
     renderer?.clearEffects();
     input?.clear();
     return;
   }
   if (name === "brand") {
-    if (sim.state === "playing" || sim.state === "countdown") sim.pause();
-    else if (sim.state !== "home") action("home");
+    if (sim.state === "playing" || sim.state === "countdown") {
+      sim.pause();
+      sound.silenceMotor();
+    } else if (sim.state !== "home") action("home");
     input?.clear();
     return;
   }
   if (name === "pause") {
     rearToggled = false;
+    if (sim.state === "garage") {
+      action("home");
+      return;
+    }
     if (sim.state === "paused") action("resume");
     else {
       sim.pause();
+      sound.silenceMotor();
       input?.clear();
     }
     return;
   }
   if (name === "disconnect") {
     const paused = sim.pause();
+    if (paused) sound.silenceMotor();
     input?.clear();
     ui.notify(
       paused
@@ -102,6 +172,16 @@ function action(name) {
   }
 }
 
+document.getElementById("volume").value = Math.round(sound.volume * 100);
+document.getElementById("volume-value").textContent =
+  `${Math.round(sound.volume * 100)}%`;
+ui.sound(sound.muted);
+document.getElementById("volume").oninput = (event) => {
+  sound.unlock();
+  sound.setVolume(Number(event.target.value) / 100);
+  document.getElementById("volume-value").textContent =
+    `${event.target.value}%`;
+};
 input = new Input(action, (device, connected) =>
   ui.setDevice(device, connected),
 );
@@ -110,6 +190,7 @@ function suspend() {
   input.clear();
   input.enabled = false;
   sim.pause();
+  sound.cancelTransient();
   accumulator = 0;
   if (sim.state === "paused")
     ui.notify(
@@ -152,7 +233,8 @@ try {
     } else accumulator = 0;
     const events = sim.drainEvents();
     renderer.handle(events);
-    events.forEach((event) => sound.event(event));
+    events.forEach((event) => sound.event(event, sim));
+    sound.update(sim);
     if (events.some((event) => event.type === "start"))
       ui.notify("¡A combatir!", 1.3);
     if (events.some((event) => event.type === "flip" && event.target === 0))
