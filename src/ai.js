@@ -1,4 +1,5 @@
 import { CONFIG, WEAPONS, angleDifference, heading, clamp } from "./config.js";
+import { attackProbe } from "./combat.js";
 import { lineClear } from "./collision.js";
 
 export class RivalAI {
@@ -66,7 +67,8 @@ export class RivalAI {
       Math.hypot(robot.x - this.path[0].x, robot.z - this.path[0].z) < 1.0
     )
       this.path.shift();
-    const inReach = visible && distance <= weapon.reach + target.radius;
+    const probe = attackProbe(robot, target, weapon);
+    const inReach = probe.canHit;
     const waypoint = inReach || clearDrive ? target : this.path[0];
     if (!waypoint)
       return (this.command = { throttle: -0.4, turn: 0.7, attack: false });
@@ -75,10 +77,28 @@ export class RivalAI {
     let throttle = Math.abs(difference) < 1.0 ? CONFIG.ai.approachSpeed : 0;
     if (visible && distance < robot.radius + target.radius + 0.18) throttle = 0;
     if (inReach && Math.abs(difference) > weapon.arc) throttle = 0;
+    const targetWeapon = target.weapon || WEAPONS[target.weaponId];
+    const imminent =
+      target.attacking &&
+      target.attackElapsed < targetWeapon.hitTime &&
+      targetWeapon.hitTime > 0.2;
+    // Respond to visible preparation, using the same reversing/braking as the player.
+    if (
+      visible &&
+      distance < targetWeapon.reach + robot.radius + 0.25 &&
+      Math.abs(difference) < 0.65 &&
+      !robot.attacking
+    ) {
+      if (
+        (imminent && robot.cooldown > 0.12) ||
+        (weapon.hitTime > 0.2 && robot.cooldown > 0.45 && robot.attackLanded)
+      )
+        throttle = -0.65;
+    }
     return (this.command = {
       throttle,
       turn,
-      attack: inReach && Math.abs(difference) <= weapon.arc * 0.8,
+      attack: inReach && Math.abs(difference) <= weapon.arc + 0.2,
     });
   }
 }

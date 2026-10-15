@@ -24,7 +24,7 @@
       <header class="topbar">
         <a class="brand" href="#" id="brand" aria-label="Volver al inicio"
           ><span class="brand-icon">B</span> BRAWL BOTS<span class="version"
-            >VOL. 03</span
+            >VOL. 04</span
           ></a
         >
         <div class="top-actions">
@@ -82,13 +82,22 @@
             ><b id="enemy-health">100</b>
           </div>
           <div class="health-track"><div id="enemy-fill"></div></div>
+          <small id="enemy-state" class="enemy-state"></small>
         </div>
       </section>
       <div id="weapon-status" class="weapon-status" hidden>
         <span id="weapon-state"></span>
         <div class="health-track"><div id="weapon-ready"></div></div>
         <small id="enemy-direction"></small>
+        <p id="combat-hint"></p>
       </div>
+      <div
+        id="combat-feedback"
+        class="combat-feedback"
+        role="status"
+        aria-live="polite"
+        hidden
+      ></div>
       <div id="view-mode" class="view-mode" hidden>VISTA HACIA ATRÁS</div>
       <div id="notice" class="notice" role="status" aria-live="polite"></div>
       <div id="countdown" class="countdown" hidden aria-live="polite"></div>
@@ -109,6 +118,7 @@
             <span>COMBATE CUERPO A CUERPO</span><span>360 CONFIGURACIONES</span>
           </div>
           <p id="home-build" class="home-build"></p>
+          <div id="result-summary" class="result-summary" hidden></div>
           <div id="menu-buttons" class="menu-buttons"></div>
           <p id="menu-confirm" class="menu-confirm">
             ENTER PARA ENTRAR A LA ARENA

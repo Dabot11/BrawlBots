@@ -1,10 +1,12 @@
 import { CONFIG, clamp } from "./config.js";
 
 export class Input {
-  constructor(onAction, onDevice) {
+  constructor(onAction, onDevice, getState = () => "home") {
     this.keys = new Set();
+    this.pendingAttack = false;
     this.onAction = onAction;
     this.onDevice = onDevice;
+    this.getState = getState;
     this.device = "keyboard";
     this.gamepadIndex = null;
     this.connected = false;
@@ -31,20 +33,31 @@ export class Input {
       "Enter",
     ];
     window.addEventListener("keydown", (event) => {
+      const combat = ["playing", "countdown"].includes(this.getState());
+      const rangeGameKey =
+        combat &&
+        event.target?.type === "range" &&
+        ["KeyW", "KeyS", "KeyA", "KeyD", "KeyC", "Space"].includes(event.code);
       if (
         !relevant.includes(event.code) ||
         (event.target?.matches?.("input, textarea, select") &&
-          !["Escape", "KeyP"].includes(event.code))
+          !["Escape", "KeyP"].includes(event.code) &&
+          !rangeGameKey)
       )
         return;
       event.preventDefault();
       if (event.repeat || !this.enabled) return;
       this.use("keyboard");
-      if (event.code === "Space" && event.target?.closest?.("button")) {
+      if (
+        event.target?.closest?.("button") &&
+        (event.code === "Enter" || (event.code === "Space" && !combat))
+      ) {
         event.target.closest("button").click();
         return;
       }
       this.keys.add(event.code);
+      if (event.code === "Space" && this.getState() === "playing")
+        this.pendingAttack = true;
       if (event.code === "Escape" || event.code === "KeyP") onAction("pause");
       if (["KeyQ", "ArrowLeft"].includes(event.code))
         onAction("previous-weapon");
@@ -71,7 +84,11 @@ export class Input {
     }
   }
   clear() {
+    this.pendingAttack = false;
     this.keys.clear();
+  }
+  consumeAttack() {
+    this.pendingAttack = false;
   }
   axis(value = 0) {
     const deadzone = CONFIG.input.deadzone;
@@ -92,7 +109,11 @@ export class Input {
     if (active) this.onAction("disconnect");
   }
   poll() {
-    const pads = Array.from(navigator.getGamepads?.() || []);
+    if (this.getState() !== "playing") this.pendingAttack = false;
+    let pads = [];
+    try {
+      pads = Array.from(navigator.getGamepads?.() || []);
+    } catch {}
     // Nonstandard devices have no guaranteed Xbox button layout.
     let pad = pads.find(
       (p) => p && p.mapping === "standard" && p.index === this.gamepadIndex,
@@ -106,7 +127,7 @@ export class Input {
       turn:
         Number(this.keys.has("KeyD") || this.keys.has("ArrowRight")) -
         Number(this.keys.has("KeyA") || this.keys.has("ArrowLeft")),
-      attack: this.keys.has("Space"),
+      attack: this.keys.has("Space") || this.pendingAttack,
       rear: this.keys.has("KeyC"),
     };
     if (!pad)

@@ -252,7 +252,12 @@ export class Sound {
       this.tone(1040, 0.2, "sine", 0.06, 1040, 0, 0.1);
     }
     if (event.type === "result") {
-      const notes = event.winner === 0 ? [330, 440, 554, 659] : [294, 220, 165];
+      const notes =
+        event.winner === 0
+          ? [330, 440, 554, 659]
+          : event.winner === -1
+            ? [392, 392]
+            : [294, 220, 165];
       notes.forEach((note, index) =>
         this.tone(note, 0.32, "triangle", 0.095, note, 0, index * 0.14),
       );

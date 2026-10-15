@@ -1,6 +1,6 @@
 {
   "name": "brawl-bots",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,7 +8,9 @@
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
     "test": "node --test",
-    "deploy": "node scripts/deploy.mjs"
+    "deploy": "node scripts/deploy.mjs",
+    "audit:balance": "node scripts/balance.mjs",
+    "audit:browser": "python scripts/browser-audit.py"
   },
   "engines": {
     "node": ">=22.12.0"

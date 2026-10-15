@@ -27,6 +27,15 @@ export function createRobot(
     cooldown: 0,
     travel: 0,
     hitFlash: 0,
+    hitReaction: 0,
+    hitStrength: 0,
+    hitX: 0,
+    hitZ: 0,
+    controlGrace: 0,
+    attacks: 0,
+    hits: 0,
+    damageDealt: 0,
+    damageTaken: 0,
     weaponId,
     attackElapsed: 0,
     attacking: false,
@@ -41,6 +50,8 @@ export function createRobot(
 
 export function drive(robot, input, dt) {
   if (robot.hp <= 0) return;
+  robot.controlGrace = Math.max(0, robot.controlGrace - dt);
+  robot.hitReaction = Math.max(0, robot.hitReaction - dt);
   robot.stun = Math.max(0, robot.stun - dt);
   robot.flipTime = Math.max(0, robot.flipTime - dt);
   const disabled = robot.stun > 0 || robot.flipTime > 0;

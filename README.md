@@ -1,6 +1,6 @@
 # Brawl Bots
 
-**Construye tu ventaja.** Versión 0.3: garaje modular, taller 3D y sonido mecánico. Un duelo entre robots con ruedas en el **Patio de Chatarra**. Remache, con el color que elijas, antena y distintivo 01, se enfrenta a Óxido (naranja, aletas y distintivo 02).
+**Construye tu ventaja.** Versión 0.4: revisión de combate, impactos legibles y controles consistentes. Un duelo entre robots con ruedas en el **Patio de Chatarra**. Remache, con el color que elijas, antena y distintivo 01, se enfrenta a Óxido (naranja, aletas y distintivo 02).
 
 Juego web de escritorio con WebGL real, Three.js y Vite. Modelos, texturas, arena y sonidos se generan localmente; no hay CDN, servicios, cuentas ni claves de API. La interfaz está en español.
 
@@ -36,7 +36,7 @@ Cada robot tiene cinco espacios independientes. Todas las piezas están disponib
 
 La ficha muestra los valores que usa el combate: integridad máxima, daño por golpe, daño/s ideal, velocidad, aceleración, giro y protección frontal. Los multiplicadores se combinan por espacio; el daño se redondea a puntos enteros. El peso de la herramienta afecta velocidad y giro. La defensa frontal combina la cuña y el auxiliar sin sumar porcentajes; el blindaje de la carcasa se aplica aparte. El todo terreno reduce los empujes y el estabilizador reduce la duración de aturdimientos y vuelcos. No hay curación, proyectiles ni ventajas ocultas por color.
 
-Todas las combinaciones quedan entre **85–110 de integridad**, **4,7–10,0 m/s**, **91–200°/s de giro** y hasta **40,8% de reducción frontal total**. El daño sostenido ideal está entre 6,7 y 24,7 puntos/s; es solo una referencia, ya que el alcance, la orientación, los obstáculos, la preparación y las interrupciones cambian el resultado de un duelo. La sierra se ajustó a 6 puntos cada 0,3 s y mantiene el corte durante aturdimientos, pero se detiene al volcar; el martillo pega más fuerte pero tarda en recuperar y pesa más. Los golpes que coinciden en el mismo paso se resuelven juntos, con empate si ambos robots quedan destruidos.
+Todas las combinaciones quedan entre **85–110 de integridad**, **4,7–10,0 m/s**, **91–200°/s de giro** y hasta **40,8% de reducción frontal total**. El daño sostenido ideal está entre 6,7 y 26,7 puntos/s; es solo una referencia, ya que el alcance, la orientación, los obstáculos, la preparación y las interrupciones cambian el resultado de un duelo. La sierra se ajustó a 7 puntos cada 0,3 s y mantiene el corte durante aturdimientos, pero se detiene al volcar; el martillo pega más fuerte pero tarda en recuperar y pesa más. Los golpes que coinciden en el mismo paso se resuelven juntos, con empate si ambos robots quedan destruidos.
 
 El equilibrio es una base inicial, no una garantía de igualdad de victorias entre armas. Las pruebas comprueban límites en los 360 montajes, ventajas/costes de cada rueda, carcasa y auxiliar, y que los efectos funcionen realmente al conducir y golpear. La revisión incluye duelos con la misma IA desde ambos lados de la arena; la IA no reemplaza probar estrategias humanas. Las definiciones están centralizadas en `src/loadout.js` y `src/config.js` para poder ajustar números sin cambiar la interfaz ni duplicar reglas.
 
@@ -91,10 +91,10 @@ Perder el foco o desconectar el mando activo pausa la partida y limpia las tecla
 
 - Arena plana con cinco obstáculos sólidos, límites físicos y decoración fuera del terreno jugable. Taller con plataforma y vista 3D, reflejos procedurales y materiales metálicos. Cámara en tercera persona elevada, detrás del robot y orientada con él. C o RS permiten mirar hacia atrás; el botón de pantalla alterna esa vista. La cámara puede salir del perímetro para mantener el encuadre.
 - Conducción con aceleración, frenado, marcha atrás más lenta, ruedas animadas y colisión circular del chasis con deslizamiento por ejes. Los dos robots obedecen las mismas reglas físicas.
-- Seis armas exclusivamente cuerpo a cuerpo: pico (estocada), picos dobles (contacto más amplio), mazo (barrido y empuje), martillo (golpe pesado), sierra (corte continuo) y cuña (blindaje frontal y vuelco). Cada una tiene un modelo y animación propios. Los golpes requieren alcance, orientación y un trayecto libre de obstáculos; tienen preparación, recuperación y un único impacto por ciclo. No hay armas de fuego ni proyectiles.
-- El daño causa empujones limitados por las colisiones. La cuña reduce el daño frontal y vuelca al rival brevemente, interrumpiendo su conducción y ataque; se recupera automáticamente. El vuelco es una animación con estado de recuperación, no una simulación completa de cuerpos rígidos.
+- Seis armas exclusivamente cuerpo a cuerpo: pico (estocada), picos dobles (contacto más amplio), mazo (barrido y empuje), martillo (golpe pesado), sierra (corte continuo) y cuña (blindaje frontal y vuelco). Cada una tiene un modelo y animación propios. Los golpes comprueban contacto entre el sector del arma y el borde del chasis, orientación y un trayecto libre de obstáculos; tienen preparación, recuperación y un único impacto por ciclo. No hay armas de fuego ni proyectiles.
+- El daño causa empujones limitados por las colisiones. Los golpes ligeros no cancelan una preparación; los pesados pueden interrumpir la preparación, pero no un golpe ya lanzado, y conceden un breve margen contra otra interrupción. La cuña reduce el daño frontal y vuelca al rival brevemente, interrumpiendo su conducción y ataque; se recupera automáticamente. El vuelco es una animación con estado de recuperación, no una simulación completa de cuerpos rígidos.
 - IA con A\* sobre una cuadrícula, rutas suavizadas con espacio para el chasis, aproximación hasta distancia de contacto, giro gradual y recuperación de atasco mediante retroceso. Respeta el alcance, las colisiones y las interrupciones del combate.
-- Cuenta regresiva, combate, victoria/derrota, pausa, revancha y regreso al inicio. Efectos breves de golpes, daño, chispas y destrucción, y audio sintetizado con Web Audio.
+- Cuenta regresiva, ronda de dos minutos, victoria/derrota/empate, pausa, revancha y regreso al inicio. Al agotar el tiempo se compara el porcentaje de integridad restante. Efectos breves de golpes, daño, chispas y destrucción, y audio sintetizado con Web Audio.
 - Simulación a pasos de 1/60 s, acumulador y límite de tiempo por fotograma; pausa al ocultar la pestaña. Partículas con vida limitada y modelos de armas reutilizados; mallas de efectos reutilizadas y reinicio sin duplicar eventos ni bucles.
 
 | Archivo                          | Responsabilidad                                                        |
@@ -108,6 +108,7 @@ Perder el foco o desconectar el mando activo pausa la partida y limpia las tecla
 | `src/navigation.js`, `src/ai.js` | A\* y decisiones del rival                                             |
 | `src/loadout.js`                 | Catálogo modular, estadísticas y persistencia local                    |
 | `src/garage.js`                  | Categorías, tarjetas de piezas y ficha del montaje                     |
+| `src/combat.js`                  | Contacto, motivos de fallo y fases comunes de animación                |
 | `src/camera.js`                  | Cámara detrás del robot y vista hacia atrás                            |
 | `src/render.js`                  | Modelos, arena, cámara, iluminación y efectos                          |
 | `src/audio.js`                   | Sonidos procedurales y silencio                                        |
@@ -132,3 +133,11 @@ Comprobación manual pendiente en Chrome/macOS con un mando Xbox físico:
 ## Límites de esta versión
 
 Solo escritorio y un mapa. El garaje permite un arma, ruedas, carcasa, un auxiliar y pintura por robot; no permite apilar módulos en el mismo espacio. No hay controles táctiles, tienda, progresión ni multijugador. Se busca 60 FPS, con densidad de píxeles limitada a 1.75, sombras de 1024 y un máximo de 160 partículas; el rendimiento real depende de la máquina. En equipos sin aceleración WebGL, el renderizado por software puede ser lento. Las colisiones del robot aproximan el chasis con un círculo; no se simulan suspensión, impactos de piezas individuales ni suspensión física. Los vuelcos de la cuña usan una animación temporizada con recuperación automática.
+
+## Revisión de jugabilidad 0.4
+
+La revisión y su método están en [docs/quality-review.md](docs/quality-review.md). Se corrigió que los botones de sonido, ayuda y vista trasera capturasen Espacio durante el combate. El ataque también funciona con el volumen enfocado; las flechas del deslizador conservan su función y Escape cierra los ajustes.
+
+El HUD distingue preparación, golpe y recuperación. Indica si el rival está en alcance, si hay que girar o rodear cobertura, y muestra daño real y protección absorbida. El chasis reacciona a los impactos y las cifras flotantes se reutilizan sin crear nuevas texturas en cada golpe. La pausa detiene la simulación, las partículas, las cifras y el motor.
+
+Las regresiones y auditorías pueden repetirse con `npm test`, `npm run audit:balance` y `npm run audit:browser`. El último comando requiere Python Playwright y Chromium, usados como herramientas de revisión y ajenos a las dependencias del juego. Para otra dirección de Vite: `python scripts/browser-audit.py --url http://127.0.0.1:5173/`. Para una compilación servida por HTTP: añadir `--production` y su dirección.

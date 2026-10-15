@@ -1,3 +1,4 @@
+import { CONFIG } from "./config.js";
 import { createRobot, drive } from "./robots.js";
 import { Navigation } from "./navigation.js";
 import { RivalAI } from "./ai.js";
@@ -27,6 +28,7 @@ export class Simulation {
     this.elapsed = 0;
     this.countdown = 3;
     this.winner = null;
+    this.resultReason = null;
     this.ai.reset();
     this.state = "countdown";
     this.resumeState = "playing";
@@ -95,14 +97,27 @@ export class Simulation {
     for (const hit of hits)
       applyHit(hit.attacker, hit.target, hit.weapon, this.events);
     if (player.hp <= 0 || rival.hp <= 0) {
-      this.winner =
-        player.hp <= 0 && rival.hp <= 0 ? -1 : player.hp <= 0 ? 1 : 0;
-      this.state = "result";
-      player.speedNow = rival.speedNow = 0;
-      player.attacking = rival.attacking = false;
-      this.events.push({ type: "result", winner: this.winner });
+      this.finish(
+        player.hp <= 0 && rival.hp <= 0 ? -1 : player.hp <= 0 ? 1 : 0,
+        "knockout",
+      );
+    } else if (this.elapsed >= CONFIG.match.seconds) {
+      const lead = player.hp / player.health - rival.hp / rival.health;
+      this.finish(Math.abs(lead) < 1e-6 ? -1 : lead > 0 ? 0 : 1, "time");
     }
   }
+  finish(winner, reason) {
+    this.winner = winner;
+    this.resultReason = reason;
+    this.state = "result";
+    for (const robot of this.robots) {
+      robot.speedNow = 0;
+      robot.attacking = false;
+      robot.impulseX = robot.impulseZ = 0;
+    }
+    this.events.push({ type: "result", winner, reason });
+  }
+
   drainEvents() {
     const events = this.events;
     this.events = [];

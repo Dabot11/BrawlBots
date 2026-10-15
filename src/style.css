@@ -1400,3 +1400,162 @@ kbd {
 .home .menu-copy {
   top: 52%;
 }
+/* Combat information uses the same contact probe as damage resolution. */
+.weapon-status {
+  width: 310px;
+  max-width: 36vw;
+}
+.weapon-status[data-ready="true"] {
+  border-color: #a1f3ccaa;
+}
+.weapon-status.is-attacking #weapon-ready {
+  box-shadow: 0 0 8px #a1f3cc88;
+}
+#combat-hint {
+  font: 11px/1.5 monospace;
+  letter-spacing: 0.2px;
+  color: #d1ded8;
+  margin: 11px 0 0;
+}
+.weapon-status[data-ready="true"] #combat-hint {
+  color: var(--mint);
+}
+.enemy-state {
+  display: block;
+  margin-top: 9px;
+  color: #b8c9bf;
+  font: 10px/1.4 monospace;
+}
+.enemy-state.danger {
+  color: #ffc18f;
+}
+.combat-feedback {
+  position: absolute;
+  z-index: 5;
+  bottom: 124px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 38vw;
+  padding: 10px 14px;
+  border: 1px solid #c7dcd94d;
+  border-radius: 5px;
+  font: 12px/1.5 monospace;
+  color: #eff5df;
+  background: #14282def;
+  text-align: center;
+  pointer-events: none;
+}
+.combat-feedback[data-kind="hit"] {
+  border-color: #9ff0c780;
+  color: #baffd9;
+}
+.combat-feedback[data-kind="hurt"] {
+  border-color: #ff9a6d80;
+  color: #ffc49d;
+}
+.combat-feedback[data-kind="miss"] {
+  color: #e5ccb1;
+  font-size: 11px;
+}
+.result-summary {
+  margin: 0 auto 19px;
+  max-width: 400px;
+  padding: 13px;
+  border-top: 1px solid #a3bdb24a;
+  border-bottom: 1px solid #a3bdb24a;
+  font: 11px/1.9 monospace;
+  color: #bfdccf;
+}
+.compact-menu .intro {
+  margin-bottom: 15px;
+}
+.part-plus,
+.part-minus,
+.part-neutral {
+  font-size: 11px;
+}
+.garage-tabs button {
+  font-size: 12px;
+}
+.build-stat small {
+  font-size: 9px;
+}
+@media (max-height: 740px) and (min-width: 721px) {
+  .part-card {
+    min-height: 102px;
+    padding: 9px;
+  }
+  .part-plus,
+  .part-minus {
+    font-size: 10px;
+  }
+  .garage h1 {
+    margin-bottom: 13px;
+  }
+}
+@media (max-width: 900px) {
+  .combat-feedback {
+    bottom: 170px;
+    max-width: 65vw;
+  }
+  .weapon-status {
+    width: 280px;
+    max-width: 45vw;
+  }
+}
+.compact-menu .menu-copy {
+  max-height: calc(100dvh - 180px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding: 6px 10px;
+}
+.combat-feedback {
+  top: 205px;
+  bottom: auto;
+  max-width: 46vw;
+}
+@media (max-height: 640px) {
+  .home .menu-copy {
+    top: 54%;
+  }
+  .home h1 {
+    font-size: 76px;
+    margin: 14px 0;
+  }
+  .home .intro {
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+  .home .home-features {
+    margin-bottom: 12px;
+  }
+  .home .home-build {
+    margin-bottom: 13px;
+  }
+  .home .menu-confirm {
+    margin-top: 13px;
+  }
+}
+#app[data-state="playing"] .audio-panel,
+#app[data-state="countdown"] .audio-panel {
+  top: 210px;
+}
+.view-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+@media (max-height: 640px) {
+  .home .menu-buttons {
+    flex-direction: row;
+    width: 380px;
+    max-width: 100%;
+    gap: 8px;
+  }
+  .home .menu-button {
+    flex: 1;
+    min-width: 0;
+    padding: 13px 14px;
+    gap: 10px;
+    font-size: 13px;
+  }
+}

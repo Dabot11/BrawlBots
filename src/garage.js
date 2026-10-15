@@ -116,7 +116,7 @@ export class Garage {
         `${build.weapon.damage} / golpe`,
         build.dps,
         28,
-        `${build.dps.toFixed(1)} daño/s ideal`,
+        `${build.dps.toFixed(1)} daño/s · golpe en ${build.weapon.hitTime.toFixed(2)}s`,
       ],
       [
         "Velocidad",

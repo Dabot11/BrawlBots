@@ -12,6 +12,7 @@ export const CONFIG = {
     home: { height: 23, distance: 16, fov: 48 },
   },
   input: { deadzone: 0.18 },
+  match: { seconds: 120 },
   ai: {
     reaction: 0.22,
     repath: 0.55,
@@ -95,7 +96,7 @@ export const WEAPONS = Object.freeze({
     name: "Sierra",
     steady: true,
     description: "Mantén el ataque para cortar a corta distancia.",
-    damage: 6,
+    damage: 7,
     reach: 1.7,
     arc: 0.65,
     interval: 0.3,

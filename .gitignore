@@ -3,3 +3,5 @@ dist/
 .npm-cache/
 artifacts/
 *.local
+
+__pycache__/

@@ -21,6 +21,7 @@ const ui = new UI(action);
 
 function start() {
   sim.reset();
+  ui.closeAudio();
   rearToggled = false;
   renderer?.clearEffects();
   renderer?.resetView(sim.robots[0]);
@@ -126,6 +127,7 @@ function action(name) {
   if (name === "resume") {
     sim.resume();
     input?.clear();
+    document.getElementById("viewport").focus({ preventScroll: true });
     sound.unlock();
     return;
   }
@@ -138,6 +140,7 @@ function action(name) {
     return;
   }
   if (name === "brand") {
+    rearToggled = false;
     if (sim.state === "playing" || sim.state === "countdown") {
       sim.pause();
       sound.silenceMotor();
@@ -160,6 +163,7 @@ function action(name) {
     return;
   }
   if (name === "disconnect") {
+    rearToggled = false;
     const paused = sim.pause();
     if (paused) sound.silenceMotor();
     input?.clear();
@@ -182,8 +186,21 @@ document.getElementById("volume").oninput = (event) => {
   document.getElementById("volume-value").textContent =
     `${event.target.value}%`;
 };
-input = new Input(action, (device, connected) =>
-  ui.setDevice(device, connected),
+document.getElementById("viewport").addEventListener("pointerdown", () => {
+  ui.closeAudio();
+  document.getElementById("viewport").focus({ preventScroll: true });
+});
+document.getElementById("audio-panel").addEventListener("keydown", (event) => {
+  if (event.code === "Escape") {
+    event.stopPropagation();
+    ui.closeAudio();
+    document.getElementById("viewport").focus({ preventScroll: true });
+  }
+});
+input = new Input(
+  action,
+  (device, connected) => ui.setDevice(device, connected),
+  () => sim.state,
 );
 function suspend() {
   rearToggled = false;
@@ -212,6 +229,8 @@ try {
   renderer.renderer.domElement.addEventListener("webglcontextlost", (event) => {
     event.preventDefault();
     sim.pause();
+    sound.cancelTransient();
+    input.clear();
     ui.error(
       "Se perdió el contexto gráfico. Recarga la página para volver a jugar.",
     );
@@ -227,19 +246,22 @@ try {
     if (sim.state === "playing" || sim.state === "countdown") {
       accumulator += dt;
       while (accumulator >= CONFIG.simulation.step) {
+        const playing = sim.state === "playing";
         sim.update(CONFIG.simulation.step, command);
+        if (playing) input.consumeAttack();
         accumulator -= CONFIG.simulation.step;
       }
     } else accumulator = 0;
     const events = sim.drainEvents();
     renderer.handle(events);
+    ui.handle(events);
     events.forEach((event) => sound.event(event, sim));
     sound.update(sim);
     if (events.some((event) => event.type === "start"))
       ui.notify("¡A combatir!", 1.3);
     if (events.some((event) => event.type === "flip" && event.target === 0))
       ui.notify("¡Te han volcado! Recuperando estabilidad…", 1.4);
-    ui.update(sim, dt);
+    ui.update(sim, dt, command);
     const rear =
       ["playing", "countdown"].includes(sim.state) &&
       (rearToggled || command.rear);

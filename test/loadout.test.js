@@ -50,7 +50,7 @@ test("all 360 assemblies stay within combat bounds, and paint never changes powe
     assert.ok(stats.speed >= 4.7 && stats.speed <= 10.1);
     assert.ok(stats.turnSpeed >= 1.5 && stats.turnSpeed <= 3.6);
     assert.ok(stats.frontArmor <= 0.42 && stats.armor <= 0.08);
-    assert.ok(dps >= 6 && dps <= 25);
+    assert.ok(dps >= 6 && dps <= 27);
     assert.ok(weapon.reach <= 2 && weapon.duration < weapon.interval);
     assert.equal(stats.radius, 1.35);
     for (const paint of Object.keys(PAINTS)) {
@@ -295,7 +295,7 @@ test("saw sustains contact through stun, but a flip still disables the blade", (
   saw.stun = 0.3;
   assert.ok(startAttack(saw, []));
   updateAttack(saw, [target], 0.1, []);
-  assert.equal(target.hp, 94);
+  assert.equal(target.hp, 93);
   saw.attacking = false;
   saw.cooldown = 0;
   saw.flipTime = 0.5;

@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { CONFIG, OBSTACLES, WEAPONS, WEAPON_IDS } from "./config.js";
 
+import { attackPose, impactPose, attackProbe } from "./combat.js";
 import { PAINTS } from "./loadout.js";
 import { ChaseCamera } from "./camera.js";
 
@@ -300,29 +301,13 @@ function animateMeleeWeapon(visual, robot, dt) {
   for (const [id, model] of Object.entries(visual.weapons)) {
     model.group.visible = id === robot.weaponId;
     if (!model.group.visible) continue;
-    const weapon = WEAPONS[id];
-    const elapsed = robot.attacking ? robot.attackElapsed : 0;
-    const phase = robot.attacking ? Math.min(1, elapsed / weapon.duration) : 0;
-    const raised = !robot.attacking
-      ? 0
-      : elapsed < weapon.windup
-        ? elapsed / weapon.windup
-        : elapsed < weapon.hitTime
-          ? 1 - (elapsed - weapon.windup) / (weapon.hitTime - weapon.windup)
-          : 0;
+    const pose = attackPose(robot);
     model.pivot.rotation.set(0, 0, 0);
     model.group.position.z = 0;
-    if (id === "hammer") model.pivot.rotation.x = raised * 1.35;
-    if (id === "mace")
-      model.pivot.rotation.y = robot.attacking
-        ? Math.sin(phase * Math.PI * 2) * 0.95
-        : 0;
-    if (id === "wedge")
-      model.pivot.rotation.x = robot.attacking
-        ? Math.sin(phase * Math.PI) * 1.0
-        : 0;
-    if (id === "spike" || id === "forks")
-      model.group.position.z = -Math.sin(phase * Math.PI) * 0.22;
+    if (id === "hammer") model.pivot.rotation.x = pose.hammer;
+    if (id === "mace") model.pivot.rotation.y = pose.sweep;
+    if (id === "wedge") model.pivot.rotation.x = pose.lift;
+    if (id === "spike" || id === "forks") model.group.position.z = pose.thrust;
     if (model.rotor)
       model.rotor.rotation.x += dt * (robot.attacking ? 35 : 1.5);
   }
@@ -524,8 +509,57 @@ function createRobot(color, id) {
   marker.position.set(0, 2.25, 0);
   marker.scale.set(2.5, 0.62, 1);
   group.add(marker);
+  const cues = Object.fromEntries(
+    WEAPON_IDS.map((key) => {
+      const weapon = WEAPONS[key],
+        points = [],
+        inner = 1.25;
+      for (let i = 0; i < 24; i++) {
+        const a = -weapon.arc + (i / 24) * weapon.arc * 2,
+          b = -weapon.arc + ((i + 1) / 24) * weapon.arc * 2;
+        const point = (angle, radius) => [
+          Math.sin(angle) * radius,
+          0.045,
+          -Math.cos(angle) * radius,
+        ];
+        points.push(
+          ...point(a, inner),
+          ...point(a, weapon.reach),
+          ...point(b, weapon.reach),
+          ...point(a, inner),
+          ...point(b, weapon.reach),
+          ...point(b, inner),
+        );
+      }
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(points, 3),
+      );
+      const cue = mesh(
+        geometry,
+        new THREE.MeshBasicMaterial({
+          color: id === 0 ? 0x9ff0c7 : 0xff8b59,
+          transparent: true,
+          opacity: 0.15,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        }),
+        group,
+        0,
+        0,
+        0,
+        false,
+      );
+      cue.visible = false;
+      return [key, cue];
+    }),
+  );
   return {
     group,
+    cues,
+    hitClock: 0,
+    wreckTime: 0,
     wheels,
     metal,
     rimPaint,
@@ -633,6 +667,26 @@ export class Renderer {
       object.visible = false;
       return { object, life: 0, maxLife: 1, vx: 0, vy: 0, vz: 0 };
     });
+    this.damageLabels = Array.from({ length: 12 }, () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 160;
+      canvas.height = 64;
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      const object = new THREE.Sprite(
+        new THREE.SpriteMaterial({
+          map: texture,
+          transparent: true,
+          depthTest: false,
+          depthWrite: false,
+        }),
+      );
+      object.visible = false;
+      object.scale.set(1.2, 0.48, 1);
+      this.scene.add(object);
+      return { object, canvas, texture, life: 0, target: 0 };
+    });
+    this.labelCursor = 0;
     this.flipBounds = new THREE.Box3();
     this.partBounds = new THREE.Box3();
     this.cursor = 0;
@@ -914,6 +968,23 @@ export class Renderer {
     for (const event of events) {
       if (event.type === "impact") this.burst(event.x, event.z, 7, 0.65);
       if (event.type === "damage") {
+        this.robots[event.target].hitClock = 0.34;
+        const label =
+          this.damageLabels[this.labelCursor++ % this.damageLabels.length];
+        label.life = 0.7;
+        label.target = event.target;
+        label.object.visible = true;
+        const ctx = label.canvas.getContext("2d");
+        ctx.clearRect(0, 0, 160, 64);
+        ctx.font = "bold 48px monospace";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.strokeStyle = "#10242b";
+        ctx.lineWidth = 7;
+        ctx.strokeText(`−${event.amount}`, 80, 32);
+        ctx.fillStyle = event.owner === 0 ? "#b9ffd9" : "#ffb58b";
+        ctx.fillText(`−${event.amount}`, 80, 32);
+        label.texture.needsUpdate = true;
         this.burst(event.x, event.z, 12, 0.8);
         if (event.target === 0) this.shake = 0.065;
       }
@@ -929,13 +1000,21 @@ export class Renderer {
       p.object.visible = false;
     });
     this.shake = 0;
+    this.damageLabels.forEach((label) => {
+      label.life = 0;
+      label.object.visible = false;
+    });
+    this.robots.forEach((visual) => {
+      visual.hitClock = 0;
+      visual.wreckTime = 0;
+    });
   }
   resetView(robot) {
     this.chase.reset(robot);
     this.wasHome = null;
   }
   update(sim, dt, rear = false) {
-    this.time += dt;
+    this.time += sim.state === "paused" ? 0 : dt;
     const home = ["home", "garage"].includes(sim.state);
     const studioChanged =
       this.layoutDirty ||
@@ -954,6 +1033,41 @@ export class Renderer {
       const visual = this.robots[id];
       visual.group.visible = !home || id === 0;
       const loadout = robot.loadout;
+      const reaction = impactPose({ ...robot, hitReaction: visual.hitClock });
+      const swing = attackPose(robot);
+      visual.body.rotation.set(
+        home ? 0 : reaction.pitch - swing.recoil,
+        0,
+        home ? 0 : reaction.roll,
+      );
+      visual.body.position.x = 0;
+      if (!home && sim.state !== "paused")
+        visual.hitClock = Math.max(0, visual.hitClock - dt);
+      if (home || robot.hp > 0) visual.wreckTime = 0;
+      else if (sim.state !== "paused")
+        visual.wreckTime = Math.min(1, visual.wreckTime + dt * 2);
+      const other = sim.robots[1 - id],
+        probe = attackProbe(robot, other);
+      for (const [key, cue] of Object.entries(visual.cues)) {
+        cue.visible =
+          !home &&
+          robot.hp > 0 &&
+          robot.flipTime <= 0 &&
+          key === robot.weaponId &&
+          (id === 0 ? probe.distance < 6 || robot.attacking : robot.attacking);
+        cue.material.opacity = robot.attacking
+          ? 0.16 + swing.charge * 0.15
+          : 0.08;
+        cue.material.color.setHex(
+          id === 1
+            ? 0xff8b59
+            : probe.canHit
+              ? 0x9ff0c7
+              : probe.reason === "cover"
+                ? 0xffb36b
+                : 0xa9c7cd,
+        );
+      }
       visual.metal.color.set(PAINTS[loadout.paint].hex);
       visual.rimPaint.color.copy(visual.metal.color);
       visual.body.scale.y =
@@ -987,7 +1101,11 @@ export class Renderer {
           tread.scale.y = loadout.wheels === "grip" ? 1.5 : 1;
         }
       }
-      visual.group.position.set(home ? 0 : robot.x, 0, home ? 0 : robot.z);
+      visual.group.position.set(
+        home ? 0 : robot.x,
+        home ? 0 : reaction.bounce,
+        home ? 0 : robot.z,
+      );
       visual.group.rotation.set(
         0,
         home ? -(2.45 + this.previewAngle) : -robot.angle,
@@ -995,8 +1113,8 @@ export class Renderer {
       );
       visual.group.scale.setScalar(home ? 1.25 : 1);
       if (robot.hp <= 0 && !home) {
-        visual.group.rotation.z = 0.16;
-        visual.group.position.y = -0.19;
+        visual.body.rotation.z += visual.wreckTime * 0.18;
+        visual.body.position.y -= visual.wreckTime * 0.13;
       }
       if (robot.flipTime > 0 && !home && robot.hp > 0) {
         const roll = Math.sin(
@@ -1019,7 +1137,11 @@ export class Renderer {
       );
       visual.wheels.forEach((w) => (w.rotation.x = robot.travel / 0.43));
       visual.marker.visible =
-        !home && id === 1 && robot.hp > 0 && robot.flipTime <= 0;
+        !home &&
+        id === 1 &&
+        robot.hp > 0 &&
+        robot.flipTime <= 0 &&
+        Math.hypot(robot.x - sim.robots[0].x, robot.z - sim.robots[0].z) > 7;
       visual.groundRing.visible = !home && robot.hp > 0 && robot.flipTime <= 0;
       if (robot.flipTime > 0 && !home && robot.hp > 0) {
         // Fit the equipped silhouette, including auxiliaries, above the floor.
@@ -1034,10 +1156,12 @@ export class Renderer {
             .applyMatrix4(object.matrixWorld);
           this.flipBounds.union(this.partBounds);
         });
-        visual.group.position.y = Math.max(0, 0.025 - this.flipBounds.min.y);
+        visual.group.position.y += Math.max(0, 0.025 - this.flipBounds.min.y);
       }
-      visual.metal.emissive.setHex(robot.hitFlash > 0 ? 0xffffff : 0);
-      visual.metal.emissiveIntensity = robot.hitFlash > 0 ? 0.7 : 0;
+      visual.metal.emissive.setHex(id === 0 ? 0xff6c42 : 0xffdc95);
+      visual.metal.emissiveIntensity = home
+        ? 0
+        : Math.min(0.7, visual.hitClock * 2);
     });
     if (sim.state !== "paused")
       for (const particle of this.particles) {
@@ -1052,6 +1176,23 @@ export class Renderer {
           Math.max(0.01, particle.life / particle.maxLife),
         );
       }
+    for (const label of this.damageLabels) {
+      if (home) {
+        label.life = 0;
+        label.object.visible = false;
+        continue;
+      }
+      if (label.life <= 0) continue;
+      if (sim.state !== "paused") label.life = Math.max(0, label.life - dt);
+      const target = sim.robots[label.target];
+      label.object.position.set(
+        target.x,
+        2.1 + (1 - label.life / 0.7) * 1.15,
+        target.z,
+      );
+      label.object.material.opacity = Math.min(1, label.life / 0.18);
+      label.object.visible = label.life > 0;
+    }
     const desiredFov = home ? CONFIG.camera.home.fov : CONFIG.camera.fov;
     if (this.camera.fov !== desiredFov) {
       this.camera.fov = desiredFov;
@@ -1095,12 +1236,16 @@ export class Renderer {
       if (this.wasHome !== false) this.chase.reset(sim.robots[0]);
       const pose = this.chase.update(
         sim.robots[0],
-        dt,
+        sim.state === "paused" ? 0 : dt,
         rear,
         this.camera.aspect,
       );
-      this.shake = Math.max(0, this.shake - dt * 0.7);
-      const shake = (Math.random() - 0.5) * this.shake;
+      this.shake = Math.max(
+        0,
+        this.shake - (sim.state === "paused" ? 0 : dt) * 0.7,
+      );
+      const shake =
+        sim.state === "paused" ? 0 : (Math.random() - 0.5) * this.shake;
       this.camera.position.set(
         pose.position.x + shake,
         pose.position.y,
